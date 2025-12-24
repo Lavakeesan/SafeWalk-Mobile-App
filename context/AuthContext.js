@@ -6,54 +6,57 @@ import {
     onAuthStateChanged,
     updateProfile
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 
 // Create Authentication Context
 const AuthContext = createContext(null);
 
-/**
- * AuthProvider Component
- * Manages user authentication state and provides auth methods to the app
- */
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // Listen for authentication state changes
+    // Listen for authentication state changes and Firestore profile updates
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-            if (firebaseUser) {
-                // User is signed in
-                // Fetch additional user data from Firestore
-                try {
-                    const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-                    const userData = userDoc.exists() ? userDoc.data() : {};
+        let unsubscribeDoc = null;
 
-                    setUser({
-                        uid: firebaseUser.uid,
-                        email: firebaseUser.email,
-                        displayName: firebaseUser.displayName || userData.fullName || '',
-                        ...userData
-                    });
-                } catch (err) {
-                    console.error('Error fetching user data:', err);
-                    setUser({
-                        uid: firebaseUser.uid,
-                        email: firebaseUser.email,
-                        displayName: firebaseUser.displayName || ''
-                    });
-                }
+        const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+            if (firebaseUser) {
+                // Set initial user data
+                setUser({
+                    uid: firebaseUser.uid,
+                    email: firebaseUser.email,
+                    displayName: firebaseUser.displayName || '',
+                });
+
+                // Listen for real-time changes to the user's document in Firestore
+                unsubscribeDoc = onSnapshot(doc(db, 'users', firebaseUser.uid), (doc) => {
+                    if (doc.exists()) {
+                        const userData = doc.data();
+                        setUser({
+                            uid: firebaseUser.uid,
+                            email: firebaseUser.email,
+                            displayName: userData.fullName || firebaseUser.displayName || '',
+                            ...userData
+                        });
+                    }
+                }, (err) => {
+                    console.error('Firestore snapshot error:', err);
+                });
             } else {
                 // User is signed out
+                if (unsubscribeDoc) unsubscribeDoc();
                 setUser(null);
             }
             setLoading(false);
         });
 
-        // Cleanup subscription on unmount
-        return unsubscribe;
+        // Cleanup subscriptions on unmount
+        return () => {
+            unsubscribeAuth();
+            if (unsubscribeDoc) unsubscribeDoc();
+        };
     }, []);
 
     /**

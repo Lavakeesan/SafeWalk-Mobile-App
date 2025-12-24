@@ -1,7 +1,22 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
-import { theme } from '../theme';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Alert,
+  StyleSheet,
+  Dimensions,
+  StatusBar,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+
+const { width, height } = Dimensions.get('window');
 
 export default function Register({ navigation }) {
   const { register } = useAuth();
@@ -44,84 +59,196 @@ export default function Register({ navigation }) {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.colors.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
-        <View style={{ flex: 1, padding: 16, gap: 16 }}>
-          <Text style={{ fontSize: 24, fontWeight: '700' }}>Create Account</Text>
-          <Text style={{ color: '#64748b' }}>Join SafeWalk to stay connected</Text>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <StatusBar barStyle="light-content" />
 
-          <View style={{ gap: 12, marginTop: 12 }}>
-            <View style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 }}>
-              <Text style={{ fontWeight: '600', marginBottom: 4 }}>Full Name</Text>
-              <TextInput
-                placeholder="Jane Doe"
-                value={fullName}
-                onChangeText={setFullName}
-                style={{ paddingVertical: 6 }}
-                placeholderTextColor="#94a3b8"
-              />
+      {/* Header with Gradient */}
+      <LinearGradient
+        colors={['#10B981', '#059669', '#047857']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
+        </TouchableOpacity>
+
+        <View style={styles.headerContent}>
+          <View style={styles.logoContainer}>
+            <MaterialCommunityIcons name="account-plus" size={50} color="#fff" />
+          </View>
+          <Text style={styles.headerTitle}>Create Account</Text>
+          <Text style={styles.headerSubtitle}>Join SafeWalk today</Text>
+        </View>
+      </LinearGradient>
+
+      {/* Content */}
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.contentContainer}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.formContainer}>
+          <Text style={styles.welcomeText}>Get Started</Text>
+          <Text style={styles.instructionText}>Create your account to begin</Text>
+
+          {/* Full Name Input */}
+          <View style={styles.inputWrapper}>
+            <View style={styles.inputIconContainer}>
+              <MaterialCommunityIcons name="account-outline" size={20} color="#6B7280" />
             </View>
+            <TextInput
+              style={styles.input}
+              placeholder="Full Name"
+              placeholderTextColor="#9CA3AF"
+              value={fullName}
+              onChangeText={setFullName}
+              autoComplete="name"
+            />
+          </View>
 
-            <View style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 }}>
-              <Text style={{ fontWeight: '600', marginBottom: 4 }}>Email</Text>
-              <TextInput
-                placeholder="you@example.com"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                style={{ paddingVertical: 6 }}
-                placeholderTextColor="#94a3b8"
-              />
+          {/* Email Input */}
+          <View style={styles.inputWrapper}>
+            <View style={styles.inputIconContainer}>
+              <MaterialCommunityIcons name="email-outline" size={20} color="#6B7280" />
             </View>
+            <TextInput
+              style={styles.input}
+              placeholder="Email Address"
+              placeholderTextColor="#9CA3AF"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+            />
+          </View>
 
-            <View style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 }}>
-              <Text style={{ fontWeight: '600', marginBottom: 4 }}>Password</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <TextInput
-                  placeholder="••••••••"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  style={{ flex: 1, paddingVertical: 6 }}
-                  placeholderTextColor="#94a3b8"
-                />
-                <TouchableOpacity onPress={() => setShowPassword((s) => !s)}>
-                  <Text style={{ color: theme.colors.primary, fontWeight: '600' }}>{showPassword ? 'Hide' : 'Show'}</Text>
-                </TouchableOpacity>
-              </View>
+          {/* Password Input */}
+          <View style={styles.inputWrapper}>
+            <View style={styles.inputIconContainer}>
+              <MaterialCommunityIcons name="lock-outline" size={20} color="#6B7280" />
             </View>
-
-            <View style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 }}>
-              <Text style={{ fontWeight: '600', marginBottom: 4 }}>Confirm Password</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <TextInput
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry={!showConfirm}
-                  style={{ flex: 1, paddingVertical: 6 }}
-                  placeholderTextColor="#94a3b8"
-                />
-                <TouchableOpacity onPress={() => setShowConfirm((s) => !s)}>
-                  <Text style={{ color: theme.colors.primary, fontWeight: '600' }}>{showConfirm ? 'Hide' : 'Show'}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
+            <TextInput
+              style={styles.input}
+              placeholder="Password (min 6 characters)"
+              placeholderTextColor="#9CA3AF"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              autoComplete="password-new"
+            />
             <TouchableOpacity
-              onPress={handleRegister}
-              disabled={loading}
-              style={{ backgroundColor: theme.colors.primary, paddingVertical: 12, borderRadius: 12, alignItems: 'center', marginTop: 4 }}
+              style={styles.eyeIcon}
+              onPress={() => setShowPassword(!showPassword)}
             >
-              <Text style={{ color: '#fff', fontWeight: '700' }}>{loading ? 'Creating…' : 'Create Account'}</Text>
+              <MaterialCommunityIcons
+                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                size={20}
+                color="#6B7280"
+              />
             </TouchableOpacity>
           </View>
 
-          <View style={{ flexDirection: 'row', marginTop: 16 }}>
-            <Text style={{ color: '#64748b' }}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => navigation && navigation.navigate('SignIn')}>
-              <Text style={{ color: theme.colors.primary, fontWeight: '700' }}>Sign In</Text>
+          {/* Confirm Password Input */}
+          <View style={styles.inputWrapper}>
+            <View style={styles.inputIconContainer}>
+              <MaterialCommunityIcons name="lock-check-outline" size={20} color="#6B7280" />
+            </View>
+            <TextInput
+              style={styles.input}
+              placeholder="Confirm Password"
+              placeholderTextColor="#9CA3AF"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry={!showConfirm}
+              autoComplete="password-new"
+            />
+            <TouchableOpacity
+              style={styles.eyeIcon}
+              onPress={() => setShowConfirm(!showConfirm)}
+            >
+              <MaterialCommunityIcons
+                name={showConfirm ? 'eye-off-outline' : 'eye-outline'}
+                size={20}
+                color="#6B7280"
+              />
+            </TouchableOpacity>
+          </View>
+
+          {/* Password Strength Indicator */}
+          {password.length > 0 && (
+            <View style={styles.passwordStrength}>
+              <View style={styles.strengthBar}>
+                <View
+                  style={[
+                    styles.strengthFill,
+                    {
+                      width: password.length < 6 ? '33%' : password.length < 10 ? '66%' : '100%',
+                      backgroundColor:
+                        password.length < 6 ? '#EF4444' : password.length < 10 ? '#F59E0B' : '#10B981',
+                    },
+                  ]}
+                />
+              </View>
+              <Text style={styles.strengthText}>
+                {password.length < 6 ? 'Weak' : password.length < 10 ? 'Medium' : 'Strong'}
+              </Text>
+            </View>
+          )}
+
+          {/* Terms and Conditions */}
+          <View style={styles.termsContainer}>
+            <MaterialCommunityIcons name="information-outline" size={16} color="#6B7280" />
+            <Text style={styles.termsText}>
+              By creating an account, you agree to our{' '}
+              <Text style={styles.termsLink}>Terms & Conditions</Text>
+            </Text>
+          </View>
+
+          {/* Create Account Button */}
+          <TouchableOpacity
+            style={[styles.registerButton, loading && styles.registerButtonDisabled]}
+            onPress={handleRegister}
+            disabled={loading}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={loading ? ['#9CA3AF', '#9CA3AF'] : ['#10B981', '#059669']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.registerButtonGradient}
+            >
+              {loading ? (
+                <Text style={styles.registerButtonText}>Creating Account...</Text>
+              ) : (
+                <>
+                  <Text style={styles.registerButtonText}>Create Account</Text>
+                  <MaterialCommunityIcons name="arrow-right" size={20} color="#fff" />
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* Divider */}
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>OR</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* Sign In Link */}
+          <View style={styles.signInContainer}>
+            <Text style={styles.signInText}>Already have an account? </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('SignIn')}>
+              <Text style={styles.signInLink}>Sign In</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -129,3 +256,191 @@ export default function Register({ navigation }) {
     </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+  },
+  header: {
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 30,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+  },
+  backButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 60 : 40,
+    left: 20,
+    zIndex: 10,
+    padding: 8,
+  },
+  headerContent: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  logoContainer: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#fff',
+    marginBottom: 6,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '500',
+  },
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
+    flexGrow: 1,
+    paddingBottom: 40,
+  },
+  formContainer: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+  },
+  welcomeText: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 6,
+  },
+  instructionText: {
+    fontSize: 15,
+    color: '#6B7280',
+    marginBottom: 24,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginBottom: 14,
+    paddingHorizontal: 16,
+    height: 56,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  inputIconContainer: {
+    marginRight: 12,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: '#111827',
+    paddingVertical: 0,
+  },
+  eyeIcon: {
+    padding: 8,
+  },
+  passwordStrength: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 12,
+  },
+  strengthBar: {
+    flex: 1,
+    height: 4,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  strengthFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  strengthText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+    width: 60,
+  },
+  termsContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+    gap: 8,
+  },
+  termsText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#6B7280',
+    lineHeight: 18,
+  },
+  termsLink: {
+    color: '#10B981',
+    fontWeight: '600',
+  },
+  registerButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 24,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  registerButtonDisabled: {
+    shadowOpacity: 0.1,
+  },
+  registerButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  registerButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E5E7EB',
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    fontSize: 14,
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  signInContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  signInText: {
+    fontSize: 15,
+    color: '#6B7280',
+  },
+  signInLink: {
+    fontSize: 15,
+    color: '#10B981',
+    fontWeight: '700',
+  },
+});

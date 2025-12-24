@@ -1,150 +1,486 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, TextInput, Alert } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  TextInput,
+  StyleSheet,
+  StatusBar,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { theme } from '../theme';
 import { useWalk } from '../context/WalkContext';
 
-const STORAGE_KEY = 'trusted_contacts_v1';
-
 export default function TrustedContacts({ navigation }) {
-  const [contacts, setContacts] = useState([]);
-  const [showForm, setShowForm] = useState(false);
+  const { contacts, addContact, removeContact, start } = useWalk();
+  const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
 
-  const { addContact: addContactToStore, contacts: storeContacts, removeContact: removeContactFromStore, start } = useWalk();
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          setContacts(parsed);
-          // sync stored trusted contacts into WalkContext (avoid duplicates)
-          parsed.forEach((c) => {
-            if (!storeContacts.find((s) => s.id === c.id)) {
-              addContactToStore(c);
-            }
-          });
-        }
-      } catch {}
-    })();
-  }, []);
-
-  useEffect(() => {
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(contacts)).catch(() => {});
-  }, [contacts]);
-
-  function addContact() {
+  const handleAddContact = async () => {
     if (!name.trim() || !phone.trim()) {
-      Alert.alert('Missing info', 'Please enter name and phone');
+      Alert.alert('Error', 'Please enter name and phone number');
       return;
     }
-    const newItem = { id: Date.now().toString(), name: name.trim(), email: email.trim(), phone: phone.trim() };
-    // update local list + shared store
-    setContacts([newItem, ...contacts]);
-    try { addContactToStore(newItem); } catch (e) {}
-    setName(''); setEmail(''); setPhone(''); setShowForm(false);
-  }
 
-  function removeContact(id) {
-    setContacts(contacts.filter(c => c.id !== id));
-    if (removeContactFromStore) removeContactFromStore(id);
-  }
+    const newContact = {
+      id: Date.now().toString(),
+      name: name.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+    };
 
-  const handleStartFor = (contact) => {
+    await addContact(newContact);
+    setName('');
+    setEmail('');
+    setPhone('');
+    setShowModal(false);
+    Alert.alert('Success', 'Contact added successfully!');
+  };
+
+  const handleDeleteContact = (contact) => {
     Alert.alert(
-      'Start walk?',
-      `Start observing ${contact.name}?`,
+      'Delete Contact',
+      `Are you sure you want to remove ${contact.name}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Yes',
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => removeContact(contact.id),
+        },
+      ]
+    );
+  };
+
+  const handleStartWalk = (contact) => {
+    Alert.alert(
+      'Start Walk Session',
+      `Start walk session with ${contact.name}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Start',
           onPress: () => {
             start(contact);
             navigation.navigate('Observer', { contact });
           },
         },
-      ],
-      { cancelable: true }
+      ]
     );
   };
 
-  const renderItem = ({ item }) => (
-    <TouchableOpacity style={styles.card} activeOpacity={0.85} onPress={() => handleStartFor(item)}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-        <View style={styles.avatar}><Text style={styles.avatarText}>{item.name?.charAt(0)?.toUpperCase() || '?'}</Text></View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.name}>{item.name}</Text>
-          <View style={styles.row}><MaterialCommunityIcons name="phone" size={14} color={theme.colors.subtitle} /><Text style={styles.meta}>{item.phone}</Text></View>
-          {item.email ? (<View style={styles.row}><MaterialCommunityIcons name="email-outline" size={14} color={theme.colors.subtitle} /><Text style={styles.meta}>{item.email}</Text></View>) : null}
+  const renderContact = ({ item }) => (
+    <View style={styles.contactCard}>
+      <TouchableOpacity
+        style={styles.contactMain}
+        onPress={() => handleStartWalk(item)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.contactAvatar}>
+          <Text style={styles.contactAvatarText}>
+            {item.name?.charAt(0)?.toUpperCase() || 'C'}
+          </Text>
         </View>
-      </View>
-      <TouchableOpacity onPress={() => removeContact(item.id)}>
-        <MaterialCommunityIcons name="trash-can-outline" size={20} color="#94A3B8" />
+        <View style={styles.contactInfo}>
+          <Text style={styles.contactName}>{item.name}</Text>
+          <View style={styles.contactDetail}>
+            <MaterialCommunityIcons name="phone" size={14} color="#6B7280" />
+            <Text style={styles.contactDetailText}>{item.phone}</Text>
+          </View>
+          {item.email && (
+            <View style={styles.contactDetail}>
+              <MaterialCommunityIcons name="email-outline" size={14} color="#6B7280" />
+              <Text style={styles.contactDetailText}>{item.email}</Text>
+            </View>
+          )}
+        </View>
       </TouchableOpacity>
-    </TouchableOpacity>
+      <View style={styles.contactActions}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => handleStartWalk(item)}
+        >
+          <MaterialCommunityIcons name="play-circle" size={24} color="#10B981" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => handleDeleteContact(item)}
+        >
+          <MaterialCommunityIcons name="trash-can-outline" size={22} color="#EF4444" />
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
-          <MaterialCommunityIcons name="arrow-left" size={22} color={theme.colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.topTitle}>Trusted Contacts</Text>
-        <TouchableOpacity onPress={() => setShowForm(!showForm)} style={styles.addBtn}>
-          <MaterialCommunityIcons name="plus" size={18} color="#fff" />
-          <Text style={styles.addText}>Add Contact</Text>
-        </TouchableOpacity>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+
+      {/* Header */}
+      <LinearGradient
+        colors={['#3B82F6', '#2563EB']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <View style={styles.headerContent}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Trusted Contacts</Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <Text style={styles.headerSubtitle}>
+          {contacts.length} {contacts.length === 1 ? 'contact' : 'contacts'}
+        </Text>
+      </LinearGradient>
+
+      {/* Content */}
+      <View style={styles.content}>
+        {contacts.length > 0 ? (
+          <FlatList
+            data={contacts}
+            renderItem={renderContact}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContainer}
+            showsVerticalScrollIndicator={false}
+          />
+        ) : (
+          <ScrollView
+            contentContainerStyle={styles.emptyScroll}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.emptyState}>
+              <MaterialCommunityIcons name="account-multiple-outline" size={80} color="#E5E7EB" />
+              <Text style={styles.emptyTitle}>No Contacts Yet</Text>
+              <Text style={styles.emptyText}>
+                Add trusted contacts who can track your location during walks
+              </Text>
+            </View>
+          </ScrollView>
+        )}
       </View>
 
-      <Text style={styles.subtitle}>People who can track your location during a safe walk</Text>
+      {/* Add Button */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => setShowModal(true)}
+        activeOpacity={0.9}
+      >
+        <LinearGradient
+          colors={['#3B82F6', '#2563EB']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.fabGradient}
+        >
+          <MaterialCommunityIcons name="plus" size={28} color="#fff" />
+        </LinearGradient>
+      </TouchableOpacity>
 
-      {showForm && (
-        <View style={styles.form}>
-          <TextInput placeholder="Name" value={name} onChangeText={setName} style={styles.input} />
-          <TextInput placeholder="Email" value={email} onChangeText={setEmail} keyboardType="email-address" style={styles.input} />
-          <TextInput placeholder="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" style={styles.input} />
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity style={styles.primary} onPress={addContact}><Text style={styles.primaryText}>Save</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.secondary} onPress={() => { setShowForm(false); setName(''); setEmail(''); setPhone(''); }}><Text style={styles.secondaryText}>Cancel</Text></TouchableOpacity>
+      {/* Add Contact Modal */}
+      <Modal
+        visible={showModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowModal(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowModal(false)}
+          />
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add Contact</Text>
+              <TouchableOpacity onPress={() => setShowModal(false)}>
+                <MaterialCommunityIcons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalForm}>
+              <View style={styles.inputWrapper}>
+                <MaterialCommunityIcons name="account-outline" size={20} color="#6B7280" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Full Name *"
+                  placeholderTextColor="#9CA3AF"
+                  value={name}
+                  onChangeText={setName}
+                />
+              </View>
+
+              <View style={styles.inputWrapper}>
+                <MaterialCommunityIcons name="phone-outline" size={20} color="#6B7280" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Phone Number *"
+                  placeholderTextColor="#9CA3AF"
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                />
+              </View>
+
+              <View style={styles.inputWrapper}>
+                <MaterialCommunityIcons name="email-outline" size={20} color="#6B7280" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email (Optional)"
+                  placeholderTextColor="#9CA3AF"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={handleAddContact}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={['#3B82F6', '#2563EB']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.addButtonGradient}
+                >
+                  <MaterialCommunityIcons name="check" size={20} color="#fff" />
+                  <Text style={styles.addButtonText}>Add Contact</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      )}
-
-      <FlatList
-        contentContainerStyle={{ padding: 16, gap: 12 }}
-        data={contacts}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        ListEmptyComponent={<Text style={styles.empty}>No trusted contacts yet. Tap "Add Contact".</Text>}
-      />
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingTop: 12, paddingBottom: 8, gap: 8, backgroundColor: theme.colors.background },
-  iconBtn: { padding: 8 },
-  topTitle: { flex: 1, textAlign: 'left', fontSize: 20, fontWeight: '700', color: theme.colors.text, marginLeft: 4 },
-  addBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: theme.colors.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999 },
-  addText: { color: '#fff', fontWeight: '600' },
-  subtitle: { color: theme.colors.subtitle, paddingHorizontal: 16, marginBottom: 8 },
-  form: { backgroundColor: theme.colors.surface, marginHorizontal: 16, marginBottom: 8, padding: 12, borderRadius: 12, borderColor: theme.colors.border, borderWidth: 1, gap: 8 },
-  input: { backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
-  primary: { backgroundColor: theme.colors.primary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
-  primaryText: { color: '#fff', fontWeight: '600' },
-  secondary: { backgroundColor: '#F3F4F6', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
-  secondaryText: { color: theme.colors.text },
-  card: { backgroundColor: theme.colors.surface, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: theme.colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#E9F0FF', alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: theme.colors.primary, fontWeight: '700' },
-  name: { fontSize: 16, fontWeight: '600', color: theme.colors.text },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
-  meta: { color: theme.colors.subtitle, fontSize: 12 },
-  empty: { color: theme.colors.subtitle, textAlign: 'center', marginTop: 24 },
+  container: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+  },
+  header: {
+    paddingTop: 60,
+    paddingBottom: 24,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  content: {
+    flex: 1,
+  },
+  listContainer: {
+    padding: 20,
+    paddingBottom: 100,
+  },
+  contactCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  contactMain: {
+    flexDirection: 'row',
+    padding: 16,
+  },
+  contactAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#DBEAFE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contactAvatarText: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#3B82F6',
+  },
+  contactInfo: {
+    flex: 1,
+    marginLeft: 12,
+    justifyContent: 'center',
+  },
+  contactName: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 6,
+  },
+  contactDetail: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+    gap: 6,
+  },
+  contactDetailText: {
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  contactActions: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    justifyContent: 'flex-end',
+    gap: 16,
+  },
+  actionButton: {
+    padding: 8,
+  },
+  emptyScroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 40,
+    paddingVertical: 60,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    borderRadius: 28,
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  fabGradient: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  modalForm: {
+    padding: 20,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    marginBottom: 14,
+    height: 56,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: '#111827',
+    marginLeft: 12,
+  },
+  addButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: 8,
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  addButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  addButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
 });
