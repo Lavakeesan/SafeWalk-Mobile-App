@@ -75,6 +75,12 @@ export default function Dashboard({ navigation }) {
         onPress={() => navigation.navigate('TrustedContacts')}
       />
       <SectionCard title="Session History" subtitle={`${history.length} sessions`} icon="history" />
+      <SectionCard
+        title="Profile"
+        subtitle="View your account"
+        icon="account-circle-outline"
+        onPress={() => navigation.navigate('Profile')}
+      />
       {history.length > 0 && (
         <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
           {history

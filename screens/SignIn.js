@@ -1,23 +1,31 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { theme } from '../theme';
+import { useAuth } from '../context/AuthContext';
 
 export default function SignIn({ navigation }) {
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSignIn = () => {
+  const handleSignIn = async () => {
+    if (!email.trim() || !password.trim()) {
+      Alert.alert('Error', 'Please enter email and password');
+      return;
+    }
+
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      // Navigate to a post-login screen if available
-      if (navigation) {
-        // Change 'Dashboard' to your target route if different
-        navigation.navigate('Dashboard');
-      }
-    }, 800);
+    const result = await login(email.trim(), password);
+    setLoading(false);
+
+    if (result.success) {
+      // Navigation will happen automatically via auth state change
+      navigation.navigate('Dashboard');
+    } else {
+      Alert.alert('Sign In Failed', result.error || 'Please check your credentials');
+    }
   };
 
   return (
