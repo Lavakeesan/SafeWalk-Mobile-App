@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,19 +9,23 @@ import {
   ScrollView,
   StatusBar,
   Dimensions,
+  Modal,
+  Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useWalk } from '../context/WalkContext';
 import * as Location from 'expo-location';
-import MapView, { Marker, Polyline } from 'react-native-maps';
+import MapView, { Marker, Polyline, UrlTile } from 'react-native-maps';
 
 const { width, height } = Dimensions.get('window');
 
 const UPDATE_MS = 4000;
-const NO_MOVE_WINDOW_MS = 120000;
+const NO_MOVE_WINDOW_MS = 60000; // 1 minute (60,000ms) of no movement triggers popup
 const NO_MOVE_DISTANCE_M = 10;
 const CONN_LOST_MS = 15000;
+const MIN_DISTANCE_THRESHOLD = 5; // Filter out GPS jitter/drift less than 5m
+const MAP_ZOOM_LEVEL = 0.012; // Standard zoom level
 
 function haversine(a, b) {
   const R = 6371000;
@@ -40,6 +44,14 @@ export default function Observer({ navigation, route }) {
   const [duration, setDuration] = useState(0);
   const [distance, setDistance] = useState(0);
   const watchRef = useRef(null);
+  const mapRef = useRef(null);
+
+  // Safety Check States
+  const [showSafetyModal, setShowSafetyModal] = useState(false);
+  const [safetyCountdown, setSafetyCountdown] = useState(10);
+  const safetyTimerRef = useRef(null);
+  const lastMoveTimeRef = useRef(Date.now());
+  const lastMovePosRef = useRef(null);
 
   const contactParam = route?.params?.contact;
   const contactName = session?.contact?.name || contactParam?.name || 'Contact';
@@ -49,7 +61,20 @@ export default function Observer({ navigation, route }) {
   const simPosRef = useRef(null);
   const tickRef = useRef(0);
   const durationIntervalRef = useRef(null);
+  const locationsRef = useRef(locations);
 
+  useEffect(() => {
+    locationsRef.current = locations;
+  }, [locations]);
+
+  // Refs for stable callbacks
+  const processNewLocationRef = useRef(null);
+  const performEmergencyActionRef = useRef(null);
+
+  useEffect(() => {
+    processNewLocationRef.current = processNewLocation;
+    performEmergencyActionRef.current = performEmergencyAction;
+  }, [processNewLocation, performEmergencyAction]);
   useEffect(() => {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -59,14 +84,18 @@ export default function Observer({ navigation, route }) {
       const sub = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.Balanced, timeInterval: UPDATE_MS, distanceInterval: 3 },
         (loc) => {
-          pushLocation({
+          const newLoc = {
             lat: loc.coords.latitude,
             lng: loc.coords.longitude,
             speed: loc.coords.speed ?? 0,
             accuracy: loc.coords.accuracy,
             ts: Date.now(),
-          });
-          setAlert('connLost', 'Connection lost.', false);
+          };
+          // Wrap in timeout to ensure update happens outside the sync watch cycle
+          setTimeout(() => {
+            processNewLocationRef.current(newLoc);
+            setAlert('connLost', 'Connection lost.', false);
+          }, 0);
         }
       );
       watchRef.current = sub;
@@ -98,53 +127,207 @@ export default function Observer({ navigation, route }) {
     };
   }, [observingStarted]);
 
-  // Calculate distance
+  // Stop simulation if real GPS is detected
   useEffect(() => {
-    if (locations.length > 1) {
-      let totalDistance = 0;
-      for (let i = 1; i < locations.length; i++) {
-        totalDistance += haversine(locations[i - 1], locations[i]);
-      }
-      setDistance(totalDistance);
+    const lastLoc = locations[locations.length - 1];
+    if (lastLoc && !lastLoc.isSim && simIntervalRef.current) {
+      console.log('Real GPS detected in history, stopping simulation');
+      clearInterval(simIntervalRef.current);
+      simIntervalRef.current = null;
     }
   }, [locations]);
 
-  function startSimulatedWalk() {
-    if (observingStarted) return;
+  // Process new location with drift filtering and auto-center
+  const processNewLocation = useCallback((newLoc) => {
+    // 1. Update No-Movement Tracker (Always check even if point is 'drift')
+    if (!lastMovePosRef.current) {
+      lastMovePosRef.current = { lat: newLoc.lat, lng: newLoc.lng };
+      lastMoveTimeRef.current = Date.now();
+    } else {
+      const distFromStart = haversine(lastMovePosRef.current, newLoc);
+      if (distFromStart > NO_MOVE_DISTANCE_M) {
+        lastMovePosRef.current = { lat: newLoc.lat, lng: newLoc.lng };
+        lastMoveTimeRef.current = Date.now(); // Reset stay timer
+      }
+    }
+
+    // 2. Handle distance and path updates
+    // Use a local copy/check since context updates are async
+    const lastLoc = locations[locations.length - 1];
+
+    if (lastLoc) {
+      const moveDist = haversine(lastLoc, newLoc);
+
+      // Filter drift: Only update trail if movement is significant
+      if (moveDist > MIN_DISTANCE_THRESHOLD) {
+        setDistance((d) => d + moveDist);
+        setTimeout(() => pushLocation(newLoc), 0);
+
+        if (mapRef.current && !showSafetyModal) {
+          mapRef.current.animateToRegion({
+            latitude: newLoc.lat,
+            longitude: newLoc.lng,
+            latitudeDelta: MAP_ZOOM_LEVEL,
+            longitudeDelta: MAP_ZOOM_LEVEL,
+          }, 1000);
+        }
+      }
+    } else {
+      setTimeout(() => pushLocation(newLoc), 0);
+    }
+  }, [locations, pushLocation, showSafetyModal]);
+
+  const setLocationsRef = useRef(null);
+  useEffect(() => {
+    setLocationsRef.current = (cb) => cb(locations);
+  }, [locations]);
+
+  // No Movement Detection Timer (Checks every 2 seconds)
+  useEffect(() => {
+    if (!observingStarted) return;
+
+    const safetyCheckInterval = setInterval(() => {
+      if (showSafetyModal) return;
+
+      const now = Date.now();
+      const stayDuration = now - lastMoveTimeRef.current;
+
+      if (stayDuration > NO_MOVE_WINDOW_MS) {
+        triggerSafetyCheck();
+      }
+    }, 2000);
+
+    return () => clearInterval(safetyCheckInterval);
+  }, [observingStarted, showSafetyModal, triggerSafetyCheck]);
+
+  const performEmergencyAction = useCallback(async () => {
+    const locs = locationsRef.current;
+    if (!locs || locs.length === 0) return;
+    const current = locs[locs.length - 1];
+
+    const recipientPhone = session?.contact?.phone || contactParam?.phone;
+    if (!recipientPhone) return;
+
+    try {
+      const apiToken = process.env.EXPO_PUBLIC_TEXTLK_API_TOKEN;
+      const senderId = process.env.EXPO_PUBLIC_TEXTLK_SENDER_ID;
+      const message = `EMERGENCY ALERT! SafeWalk user stopped moving and has not responded.
+Location: ${current.lat.toFixed(6)}, ${current.lng.toFixed(6)}
+View: https://www.google.com/maps?q=${current.lat},${current.lng}`;
+
+      await fetch('https://app.text.lk/api/v3/sms/send', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiToken}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          recipient: recipientPhone,
+          sender_id: senderId,
+          message: message,
+        }),
+      });
+      setTimeout(() => setAlert('emergency', 'SOS alert sent to contact.', true), 0);
+      Alert.alert('SOS Sent', 'An emergency message has been sent to your trusted contact.');
+    } catch (error) {
+      console.log('Auto SOS failed', error);
+    }
+  }, [session?.contact?.phone, contactParam?.phone, setAlert]);
+
+  const autoSendEmergency = useCallback(async () => {
+    setShowSafetyModal(false);
+    setTimeout(() => setAlert('noResponse', 'Automatic SOS triggered due to no response.', true), 0);
+    await performEmergencyAction();
+  }, [setAlert, performEmergencyAction]);
+
+  const triggerSafetyCheck = useCallback(() => {
+    setShowSafetyModal(true);
+    setSafetyCountdown(10);
+
+    if (safetyTimerRef.current) clearInterval(safetyTimerRef.current);
+
+    safetyTimerRef.current = setInterval(() => {
+      setSafetyCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(safetyTimerRef.current);
+          autoSendEmergency();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, [autoSendEmergency]);
+
+  const handleSafetyResponse = useCallback((isSafe) => {
+    if (safetyTimerRef.current) clearInterval(safetyTimerRef.current);
+    setShowSafetyModal(false);
+
+    if (isSafe) {
+      lastMoveTimeRef.current = Date.now(); // Reset stay timer
+      setTimeout(() => setAlert('userSafe', 'Safety check confirmed: User is safe.', false), 0);
+    } else {
+      Alert.alert('Sending Help', 'Sending emergency SMS to your contact...');
+      performEmergencyAction();
+    }
+  }, [setAlert, performEmergencyAction]);
+
+  async function startSimulatedWalk() {
+    // On native, we prefer real GPS. Only start simulation if no real signal received yet
+    if (observingStarted || (Platform.OS !== 'web' && locations.length > 0)) return;
+
+    // Try to get actual current location to start simulation from there
+    let startPos = { lat: 37.7749, lng: -122.4194 }; // Default SF
+    try {
+      const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      if (current) {
+        startPos = { lat: current.coords.latitude, lng: current.coords.longitude };
+      }
+    } catch (e) {
+      console.log('Using default location for simulation');
+    }
+
     if (!session) {
-      start(contactParam || { id: `sim-${Date.now()}`, name: contactName });
+      // Small delay to ensure session starts outside of current effect cycle
+      setTimeout(() => {
+        start(contactParam || { id: `sim-${Date.now()}`, name: contactName });
+
+        // These context updates must also happen outside the sync effect cycle
+        pushLocation({
+          lat: simPosRef.current.lat,
+          lng: simPosRef.current.lng,
+          speed: 0,
+          accuracy: 5,
+          ts: Date.now(),
+          isSim: true,
+        });
+
+        setAlert('started', `Walk started with ${contactName}.`, false);
+      }, 0);
     }
     setObservingStarted(true);
 
     const last = locations && locations.length ? locations[locations.length - 1] : null;
-    simPosRef.current = last ? { lat: last.lat, lng: last.lng } : { lat: 37.7749, lng: -122.4194 };
-
-    pushLocation({
-      lat: simPosRef.current.lat,
-      lng: simPosRef.current.lng,
-      speed: 0,
-      accuracy: 5,
-      ts: Date.now(),
-    });
-
-    setAlert('started', `Walk started with ${contactName}.`, false);
+    simPosRef.current = last ? { lat: last.lat, lng: last.lng } : startPos;
 
     simIntervalRef.current = setInterval(() => {
       tickRef.current += 1;
       const t = tickRef.current;
       const speed = 1.4;
-      const deltaLat = (speed / 111320) * (Math.random() * 0.8 + 0.6);
-      const deltaLng = (speed / (111320 * Math.cos((simPosRef.current.lat * Math.PI) / 180))) * (Math.random() * 0.8 + 0.6);
 
-      simPosRef.current.lat += deltaLat;
-      simPosRef.current.lng += deltaLng;
+      // Removed automatic movement increments to allow testing stationary alerts
+      // const deltaLat = (speed / 111320) * (Math.random() * 0.8 + 0.6);
+      // const deltaLng = (speed / (111320 * Math.cos((simPosRef.current.lat * Math.PI) / 180))) * (Math.random() * 0.8 + 0.6);
+      // simPosRef.current.lat += deltaLat;
+      // simPosRef.current.lng += deltaLng;
 
-      pushLocation({
+      processNewLocationRef.current({
         lat: simPosRef.current.lat,
         lng: simPosRef.current.lng,
-        speed: speed + Math.random() * 0.3,
-        accuracy: 5 + Math.random() * 3,
+        speed: 0,
+        accuracy: 5,
         ts: Date.now(),
+        isSim: true,
       });
 
       if (t === 8) {
@@ -176,40 +359,7 @@ export default function Observer({ navigation, route }) {
         {
           text: 'Send NOW',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              const apiToken = process.env.EXPO_PUBLIC_TEXTLK_API_TOKEN;
-              const senderId = process.env.EXPO_PUBLIC_TEXTLK_SENDER_ID;
-              const message = `EMERGENCY! SafeWalk user is in danger. 
-Location: ${currentLocation.lat.toFixed(6)}, ${currentLocation.lng.toFixed(6)}
-View on maps: https://www.google.com/maps?q=${currentLocation.lat},${currentLocation.lng}`;
-
-              const response = await fetch('https://app.text.lk/api/v3/sms/send', {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${apiToken}`,
-                  'Content-Type': 'application/json',
-                  'Accept': 'application/json',
-                },
-                body: JSON.stringify({
-                  recipient: recipientPhone,
-                  sender_id: senderId,
-                  message: message,
-                }),
-              });
-
-              const result = await response.json();
-
-              if (response.ok) {
-                Alert.alert('Sent', 'Emergency alert has been sent!');
-                setAlert('emergency', 'SOS alert sent to contact.', true);
-              } else {
-                Alert.alert('SMS Failed', result.message || 'Could not send SMS.');
-              }
-            } catch (error) {
-              Alert.alert('Error', 'Network error. Check connection.');
-            }
-          },
+          onPress: () => performEmergencyActionRef.current(),
         },
       ]
     );
@@ -252,6 +402,29 @@ View on maps: https://www.google.com/maps?q=${currentLocation.lat},${currentLoca
     return `${(meters / 1000).toFixed(2)} km`;
   };
 
+  const fitView = () => {
+    if (mapRef.current && locations.length > 0) {
+      mapRef.current.fitToCoordinates(
+        locations.map(loc => ({ latitude: loc.lat, longitude: loc.lng })),
+        {
+          edgePadding: { top: 60, right: 60, bottom: 60, left: 60 },
+          animated: true,
+        }
+      );
+    }
+  };
+
+  const handleCall = () => {
+    const phone = session?.contact?.phone || contactParam?.phone;
+    if (phone) {
+      Linking.openURL(`tel:${phone}`).catch(() => {
+        Alert.alert('Error', 'Unable to make call. Please check your phone app.');
+      });
+    } else {
+      Alert.alert('Error', 'No phone number available for this contact.');
+    }
+  };
+
   const currentLocation = locations.length > 0 ? locations[locations.length - 1] : null;
   const activeAlerts = alerts.filter((a) => a.active);
 
@@ -271,26 +444,20 @@ View on maps: https://www.google.com/maps?q=${currentLocation.lat},${currentLoca
             <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
               <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
             </TouchableOpacity>
+
             <View style={styles.headerCenter}>
               <View style={styles.liveIndicator}>
                 <View style={styles.liveDot} />
                 <Text style={styles.liveText}>LIVE</Text>
               </View>
-              <Text style={styles.headerTitle}>Active Walk</Text>
+              <Text style={styles.headerTitle}>Safe Walk Session</Text>
+              <Text style={styles.headerSubtitle}>with {contactName}</Text>
             </View>
-            <View style={{ width: 40 }} />
-          </View>
 
-          {/* Contact Info */}
-          <View style={styles.contactInfo}>
-            <View style={styles.contactAvatar}>
-              <Text style={styles.contactAvatarText}>
+            <View style={styles.headerAvatar}>
+              <Text style={styles.headerAvatarText}>
                 {contactName?.charAt(0)?.toUpperCase() || 'C'}
               </Text>
-            </View>
-            <View style={styles.contactDetails}>
-              <Text style={styles.contactLabel}>Walking with</Text>
-              <Text style={styles.contactName}>{contactName}</Text>
             </View>
           </View>
         </LinearGradient>
@@ -303,45 +470,30 @@ View on maps: https://www.google.com/maps?q=${currentLocation.lat},${currentLoca
         showsVerticalScrollIndicator={false}
         bounces={true}
       >
-        {/* Stats Cards */}
+        {/* Stats Section */}
         <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <LinearGradient
-              colors={['#3B82F6', '#2563EB']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.statGradient}
-            >
-              <MaterialCommunityIcons name="clock-outline" size={28} color="#fff" />
-              <Text style={styles.statValue}>{formatDuration(duration)}</Text>
+          <View style={[styles.statCard, styles.durationCard]}>
+            <MaterialCommunityIcons name="clock-outline" size={20} color="#3B82F6" />
+            <View style={styles.statInfo}>
+              <Text style={[styles.statValue, styles.durationText]}>{formatDuration(duration)}</Text>
               <Text style={styles.statLabel}>Duration</Text>
-            </LinearGradient>
+            </View>
           </View>
 
-          <View style={styles.statCard}>
-            <LinearGradient
-              colors={['#10B981', '#059669']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.statGradient}
-            >
-              <MaterialCommunityIcons name="map-marker-distance" size={28} color="#fff" />
-              <Text style={styles.statValue}>{formatDistance(distance)}</Text>
+          <View style={[styles.statCard, styles.distanceCard]}>
+            <MaterialCommunityIcons name="map-marker-distance" size={20} color="#10B981" />
+            <View style={styles.statInfo}>
+              <Text style={[styles.statValue, styles.distanceText]}>{formatDistance(distance)}</Text>
               <Text style={styles.statLabel}>Distance</Text>
-            </LinearGradient>
+            </View>
           </View>
 
-          <View style={styles.statCard}>
-            <LinearGradient
-              colors={['#8B5CF6', '#7C3AED']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.statGradient}
-            >
-              <MaterialCommunityIcons name="map-marker-multiple" size={28} color="#fff" />
-              <Text style={styles.statValue}>{locations.length}</Text>
+          <View style={[styles.statCard, styles.pointsCard]}>
+            <MaterialCommunityIcons name="map-marker-multiple" size={20} color="#8B5CF6" />
+            <View style={styles.statInfo}>
+              <Text style={[styles.statValue, styles.pointsText]}>{locations.length}</Text>
               <Text style={styles.statLabel}>Points</Text>
-            </LinearGradient>
+            </View>
           </View>
         </View>
 
@@ -363,41 +515,72 @@ View on maps: https://www.google.com/maps?q=${currentLocation.lat},${currentLoca
               )}
             </LinearGradient>
           ) : currentLocation ? (
-            <MapView
-              style={styles.map}
-              initialRegion={{
-                latitude: currentLocation.lat,
-                longitude: currentLocation.lng,
-                latitudeDelta: 0.005,
-                longitudeDelta: 0.005,
-              }}
-              region={{
-                latitude: currentLocation.lat,
-                longitude: currentLocation.lng,
-                latitudeDelta: 0.005,
-                longitudeDelta: 0.005,
-              }}
-            >
-              <Marker
-                coordinate={{
+            <>
+              <MapView
+                ref={mapRef}
+                style={styles.map}
+                mapType={Platform.OS === 'android' ? "none" : "standard"}
+                showsUserLocation={true}
+                initialRegion={{
                   latitude: currentLocation.lat,
                   longitude: currentLocation.lng,
+                  latitudeDelta: 0.015,
+                  longitudeDelta: 0.015,
                 }}
-                title="My Location"
-                description="You are here"
-              />
-
-              {locations.length > 1 && (
-                <Polyline
-                  coordinates={locations.map(loc => ({
-                    latitude: loc.lat,
-                    longitude: loc.lng
-                  }))}
-                  strokeColor="#3B82F6"
-                  strokeWidth={4}
+              >
+                <UrlTile
+                  urlTemplate="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  maximumZ={19}
+                  flipY={false}
+                  tileSize={256}
                 />
-              )}
-            </MapView>
+                {locations.length > 0 && (
+                  <Marker
+                    coordinate={{
+                      latitude: locations[0].lat,
+                      longitude: locations[0].lng,
+                    }}
+                    title="Start"
+                    pinColor="#10B981"
+                    zIndex={10}
+                    tracksViewChanges={false}
+                  />
+                )}
+                <Marker
+                  coordinate={{
+                    latitude: currentLocation.lat,
+                    longitude: currentLocation.lng,
+                  }}
+                  title="My Location"
+                  description="You are here"
+                  zIndex={20}
+                  tracksViewChanges={false}
+                />
+
+                {locations.length > 1 && (
+                  <Polyline
+                    coordinates={locations.map(loc => ({
+                      latitude: loc.lat,
+                      longitude: loc.lng
+                    }))}
+                    strokeColor="#3B82F6"
+                    strokeWidth={4}
+                  />
+                )}
+              </MapView>
+
+              {/* Floating Fit View Button */}
+              <TouchableOpacity
+                style={styles.fitButton}
+                onPress={fitView}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons name="arrow-expand-all" size={20} color="#374151" />
+              </TouchableOpacity>
+              <View style={styles.osmAttribution}>
+                <Text style={styles.osmAttributionText}>© OpenStreetMap contributors</Text>
+              </View>
+            </>
           ) : (
             <LinearGradient
               colors={['#F3F4F6', '#E5E7EB']}
@@ -465,6 +648,43 @@ View on maps: https://www.google.com/maps?q=${currentLocation.lat},${currentLoca
         )}
       </ScrollView>
 
+      {/* Safety Check Modal */}
+      <Modal
+        visible={showSafetyModal}
+        transparent={true}
+        animationType="fade"
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.safetyModalContent}>
+            <View style={styles.safetyIconContainer}>
+              <MaterialCommunityIcons name="alert-circle-outline" size={48} color="#EF4444" />
+            </View>
+            <Text style={styles.safetyTitle}>Safety Check</Text>
+            <Text style={styles.safetyMessage}>
+              You haven't moved for a while. Are you okay?
+            </Text>
+            <Text style={styles.safetyTimer}>
+              Automatic SOS in <Text style={styles.timerCount}>{safetyCountdown}s</Text>
+            </Text>
+
+            <View style={styles.safetyActions}>
+              <TouchableOpacity
+                style={[styles.safetyButton, styles.safeButton]}
+                onPress={() => handleSafetyResponse(true)}
+              >
+                <Text style={styles.safeButtonText}>I'm Safe</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.safetyButton, styles.issueButton]}
+                onPress={() => handleSafetyResponse(false)}
+              >
+                <Text style={styles.issueButtonText}>I Need Help</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Action Buttons (Fixed Footer) */}
       <View style={styles.footer}>
         <TouchableOpacity
@@ -478,8 +698,24 @@ View on maps: https://www.google.com/maps?q=${currentLocation.lat},${currentLoca
             end={{ x: 1, y: 0 }}
             style={styles.emergencyButtonGradient}
           >
-            <MaterialCommunityIcons name="alert-octagon" size={24} color="#fff" />
-            <Text style={styles.emergencyButtonText}>EMERGENCY</Text>
+            <MaterialCommunityIcons name="alert-octagon" size={20} color="#fff" />
+            <Text style={styles.emergencyButtonText}>SOS</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.callButton}
+          onPress={handleCall}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={['#10B981', '#059669']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.callButtonGradient}
+          >
+            <MaterialCommunityIcons name="phone" size={20} color="#fff" />
+            <Text style={styles.callButtonText}>Call</Text>
           </LinearGradient>
         </TouchableOpacity>
 
@@ -494,8 +730,8 @@ View on maps: https://www.google.com/maps?q=${currentLocation.lat},${currentLoca
             end={{ x: 1, y: 0 }}
             style={styles.endButtonGradient}
           >
-            <MaterialCommunityIcons name="stop-circle" size={24} color="#fff" />
-            <Text style={styles.endButtonText}>End Walk</Text>
+            <MaterialCommunityIcons name="stop-circle" size={20} color="#fff" />
+            <Text style={styles.endButtonText}>End</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -512,17 +748,16 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   header: {
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: 24,
+    paddingTop: Platform.OS === 'ios' ? 50 : 30,
+    paddingBottom: 16,
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
   },
   backButton: {
     padding: 8,
@@ -534,10 +769,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginBottom: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 10,
+    marginBottom: 4,
   },
   liveDot: {
     width: 8,
@@ -553,41 +788,29 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     color: '#fff',
   },
-  contactInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    padding: 12,
-    borderRadius: 16,
+  headerSubtitle: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '600',
+    marginTop: 1,
   },
-  contactAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#fff',
+  headerAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
-  contactAvatarText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#4F46E5',
-  },
-  contactDetails: {
-    marginLeft: 12,
-  },
-  contactLabel: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginBottom: 2,
-  },
-  contactName: {
-    fontSize: 18,
-    fontWeight: '700',
+  headerAvatarText: {
+    fontSize: 16,
+    fontWeight: '800',
     color: '#fff',
   },
   content: {
@@ -605,29 +828,47 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  statGradient: {
-    padding: 16,
+    flexDirection: 'row',
     alignItems: 'center',
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    gap: 8,
+  },
+  durationCard: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#DBEAFE',
+  },
+  distanceCard: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#D1FAE5',
+  },
+  pointsCard: {
+    backgroundColor: '#F5F3FF',
+    borderColor: '#EDE9FE',
+  },
+  statInfo: {
+    flex: 1,
   },
   statValue: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '800',
-    color: '#fff',
-    marginTop: 8,
-    marginBottom: 4,
+  },
+  durationText: {
+    color: '#1E40AF',
+  },
+  distanceText: {
+    color: '#065F46',
+  },
+  pointsText: {
+    color: '#5B21B6',
   },
   statLabel: {
-    fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontWeight: '600',
+    fontSize: 9,
+    color: '#6B7280',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    marginTop: 1,
   },
   mapContainer: {
     marginHorizontal: 20,
@@ -639,7 +880,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
-    height: 300, // Increased height for better visibility
+    height: 380, // Slightly reduced height for better balance
   },
   map: {
     width: '100%',
@@ -781,53 +1022,194 @@ const styles = StyleSheet.create({
     color: '#3B82F6',
   },
   footer: {
-    padding: 20,
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     gap: 12,
+    // Add shadow to make the lifted footer look premium
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 20,
   },
   emergencyButton: {
-    borderRadius: 16,
+    flex: 1,
+    borderRadius: 12,
     overflow: 'hidden',
     shadowColor: '#EF4444',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
   emergencyButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    gap: 8,
+    paddingVertical: 12,
+    gap: 6,
   },
   emergencyButtonText: {
-    fontSize: 18,
+    fontSize: 12,
     fontWeight: '800',
     color: '#fff',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
+  },
+  callButton: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  callButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    gap: 6,
+  },
+  callButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#fff',
   },
   endButton: {
-    borderRadius: 16,
+    flex: 1,
+    borderRadius: 12,
     overflow: 'hidden',
     shadowColor: '#4F46E5',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
   endButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    gap: 8,
+    paddingVertical: 12,
+    gap: 6,
   },
   endButtonText: {
-    fontSize: 18,
+    fontSize: 12,
     fontWeight: '700',
     color: '#fff',
+  },
+  osmAttribution: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderTopLeftRadius: 4,
+  },
+  fitButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    padding: 10,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  osmAttributionText: {
+    fontSize: 10,
+    color: '#374151',
+    fontWeight: '500',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  safetyModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+  },
+  safetyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#FEF2F2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  safetyTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  safetyMessage: {
+    fontSize: 16,
+    color: '#4B5563',
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 24,
+  },
+  safetyTimer: {
+    fontSize: 16,
+    color: '#374151',
+    fontWeight: '600',
+    marginBottom: 24,
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  timerCount: {
+    color: '#EF4444',
+    fontWeight: '800',
+  },
+  safetyActions: {
+    width: '100%',
+    gap: 12,
+  },
+  safetyButton: {
+    width: '100%',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  safeButton: {
+    backgroundColor: '#10B981',
+  },
+  issueButton: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 2,
+    borderColor: '#EF4444',
+  },
+  safeButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  issueButtonText: {
+    color: '#EF4444',
+    fontSize: 18,
+    fontWeight: '700',
   },
 });

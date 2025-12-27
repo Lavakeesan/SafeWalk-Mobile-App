@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useRef, useState, useEffect } from 'react';
+import React, { createContext, useContext, useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import { doc, updateDoc, arrayUnion, arrayRemove, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from './AuthContext';
@@ -34,7 +34,8 @@ export function WalkProvider({ children }) {
   /**
    * Load user's contacts and walk history from Firebase
    */
-  const loadUserData = async () => {
+  const loadUserData = useCallback(async () => {
+    if (!user?.uid) return;
     try {
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       if (userDoc.exists()) {
@@ -45,13 +46,13 @@ export function WalkProvider({ children }) {
     } catch (error) {
       console.error('Error loading user data:', error);
     }
-  };
+  }, [user?.uid]);
 
   /**
    * Add a new trusted contact
    * Saves to Firebase and updates local state
    */
-  const addContact = async (contact) => {
+  const addContact = useCallback(async (contact) => {
     const newContact = {
       id: contact?.id || `c-${Date.now()}`,
       name: contact?.name || 'Unnamed',
@@ -59,34 +60,29 @@ export function WalkProvider({ children }) {
       phone: contact?.phone || '',
     };
 
-    // Update local state immediately
     setContacts((prev) => [...prev, newContact]);
 
-    // Sync to Firebase if user is logged in
     if (user?.uid) {
       try {
-        await updateDoc(doc(db, 'users', user.uid), {
+        await setDoc(doc(db, 'users', user.uid), {
           trustedContacts: arrayUnion(newContact)
-        });
+        }, { merge: true });
       } catch (error) {
         console.error('Error adding contact to Firebase:', error);
       }
     }
 
     return newContact;
-  };
+  }, [user?.uid]);
 
   /**
    * Remove a trusted contact
    * Removes from Firebase and updates local state
    */
-  const removeContact = async (id) => {
+  const removeContact = useCallback(async (id) => {
     const contactToRemove = contacts.find((c) => c.id === id);
-
-    // Update local state immediately
     setContacts((prev) => prev.filter((c) => c.id !== id));
 
-    // Sync to Firebase if user is logged in
     if (user?.uid && contactToRemove) {
       try {
         await updateDoc(doc(db, 'users', user.uid), {
@@ -96,12 +92,12 @@ export function WalkProvider({ children }) {
         console.error('Error removing contact from Firebase:', error);
       }
     }
-  };
+  }, [user?.uid, contacts]);
 
   /**
    * Start a new walk session
    */
-  const start = (contact) => {
+  const start = useCallback((contact) => {
     const id = Date.now().toString();
     const newSession = {
       id,
@@ -113,40 +109,39 @@ export function WalkProvider({ children }) {
     setLocations([]);
     setAlerts([]);
     lastUpdateRef.current = 0;
-  };
+  }, []);
 
   /**
    * End the current walk session
    * Saves session to Firebase history
    */
-  const end = async () => {
-    setSession((s) => {
-      if (!s) return s;
+  const end = useCallback(async () => {
+    if (!session) return;
 
-      const ended = { ...s, status: 'ended', endedAt: Date.now() };
+    const ended = { ...session, status: 'ended', endedAt: Date.now() };
 
-      // Add to history
-      setHistory((prev) => [...prev, ended]);
+    // Update states sequentially
+    setSession(ended);
+    setHistory((prev) => [...prev, ended]);
 
-      // Save to Firebase if user is logged in
-      if (user?.uid) {
-        updateDoc(doc(db, 'users', user.uid), {
+    if (user?.uid) {
+      try {
+        await setDoc(doc(db, 'users', user.uid), {
           walkSessions: arrayUnion(ended)
-        }).catch((error) => {
-          console.error('Error saving session to Firebase:', error);
-        });
+        }, { merge: true });
+      } catch (error) {
+        console.error('Error saving session to Firebase:', error);
       }
+    }
+    return ended;
+  }, [user?.uid, session]);
 
-      return ended;
-    });
-  };
-
-  const pushLocation = (p) => {
+  const pushLocation = useCallback((p) => {
     setLocations((prev) => [...prev, p]);
     lastUpdateRef.current = p.ts || Date.now();
-  };
+  }, []);
 
-  const setAlert = (type, message, active) => {
+  const setAlert = useCallback((type, message, active) => {
     setAlerts((prev) => {
       const idx = prev.findIndex((a) => a.type === type);
       if (idx === -1) return [...prev, { type, message, active, ts: Date.now() }];
@@ -154,7 +149,7 @@ export function WalkProvider({ children }) {
       copy[idx] = { ...copy[idx], message, active, ts: Date.now() };
       return copy;
     });
-  };
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -171,7 +166,10 @@ export function WalkProvider({ children }) {
       addContact,
       removeContact
     }),
-    [session, locations, alerts, history, contacts, user?.uid]
+    [
+      session, locations, alerts, history, start, end,
+      pushLocation, setAlert, contacts, addContact, removeContact, user?.uid
+    ]
   );
 
   return <WalkContext.Provider value={value}>{children}</WalkContext.Provider>;
