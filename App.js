@@ -10,6 +10,7 @@ import { AuthProvider } from './context/AuthContext';
 import { WalkProvider } from './context/WalkContext';
 import SignIn from './screens/SignIn';
 import Register from './screens/Register';
+import History from './screens/History';
 
 const Stack = createNativeStackNavigator();
 
@@ -26,6 +27,7 @@ export default function App() {
               <Stack.Screen name="TrustedContacts" component={TrustedContacts} />
               <Stack.Screen name="Observer" component={Observer} />
               <Stack.Screen name="Profile" component={Profile} />
+              <Stack.Screen name="History" component={History} />
             </Stack.Navigator>
           </NavigationContainer>
         </WalkProvider>

@@ -11,6 +11,8 @@ import {
   StyleSheet,
   Dimensions,
   StatusBar,
+  Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -19,11 +21,16 @@ import { useAuth } from '../context/AuthContext';
 const { width, height } = Dimensions.get('window');
 
 export default function SignIn({ navigation }) {
-  const { login } = useAuth();
+  const { login, sendPasswordReset } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Forgot Password States
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
 
   const handleSignIn = async () => {
     if (!email.trim() || !password.trim()) {
@@ -39,6 +46,27 @@ export default function SignIn({ navigation }) {
       navigation.navigate('Dashboard');
     } else {
       Alert.alert('Sign In Failed', result.error || 'Please check your credentials');
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetEmail.trim()) {
+      Alert.alert('Error', 'Please enter your email address');
+      return;
+    }
+
+    setResetLoading(true);
+    const result = await sendPasswordReset(resetEmail.trim());
+    setResetLoading(false);
+
+    if (result.success) {
+      Alert.alert(
+        'Email Sent',
+        'A password reset link has been sent to your email address. Please check your inbox.',
+        [{ text: 'OK', onPress: () => setShowForgotModal(false) }]
+      );
+    } else {
+      Alert.alert('Error', result.error || 'Failed to send reset email');
     }
   };
 
@@ -120,7 +148,10 @@ export default function SignIn({ navigation }) {
           </View>
 
           {/* Forgot Password */}
-          <TouchableOpacity style={styles.forgotPassword}>
+          <TouchableOpacity
+            style={styles.forgotPassword}
+            onPress={() => setShowForgotModal(true)}
+          >
             <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
           </TouchableOpacity>
 
@@ -164,6 +195,65 @@ export default function SignIn({ navigation }) {
           </View>
         </View>
       </ScrollView>
+
+      {/* Forgot Password Modal */}
+      <Modal
+        visible={showForgotModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowForgotModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Reset Password</Text>
+              <TouchableOpacity onPress={() => setShowForgotModal(false)}>
+                <MaterialCommunityIcons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              <Text style={styles.modalInstruction}>
+                Enter your email address and we'll send you a link to reset your password.
+              </Text>
+
+              <View style={styles.modalInputWrapper}>
+                <View style={styles.inputIconContainer}>
+                  <MaterialCommunityIcons name="email-outline" size={20} color="#6B7280" />
+                </View>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email Address"
+                  placeholderTextColor="#9CA3AF"
+                  value={resetEmail}
+                  onChangeText={setResetEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <TouchableOpacity
+                style={styles.resetButton}
+                onPress={handleResetPassword}
+                disabled={resetLoading}
+              >
+                <LinearGradient
+                  colors={['#4F46E5', '#7C3AED']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.resetButtonGradient}
+                >
+                  {resetLoading ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={styles.resetButtonText}>Send Reset Link</Text>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -316,5 +406,68 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#4F46E5',
     fontWeight: '700',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  modalBody: {
+    padding: 24,
+  },
+  modalInstruction: {
+    fontSize: 15,
+    color: '#6B7280',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  modalInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    marginBottom: 24,
+    paddingHorizontal: 16,
+    height: 56,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  resetButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  resetButtonGradient: {
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resetButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
   },
 });

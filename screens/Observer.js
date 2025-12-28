@@ -57,6 +57,7 @@ export default function Observer({ navigation, route }) {
   const contactName = session?.contact?.name || contactParam?.name || 'Contact';
 
   const [observingStarted, setObservingStarted] = useState(false);
+  const [helpSent, setHelpSent] = useState(false);
   const simIntervalRef = useRef(null);
   const simPosRef = useRef(null);
   const tickRef = useRef(0);
@@ -107,17 +108,28 @@ export default function Observer({ navigation, route }) {
   }, []);
 
   useEffect(() => {
+    if (session && !observingStarted) {
+      setObservingStarted(true);
+    }
+  }, [session, observingStarted]);
+
+  useEffect(() => {
     if (observingStarted) return;
     if (session || contactParam) {
       startSimulatedWalk();
     }
-  }, [session, contactParam]);
+  }, [session, contactParam, observingStarted]);
 
   // Duration timer
   useEffect(() => {
     if (observingStarted) {
       durationIntervalRef.current = setInterval(() => {
-        setDuration((prev) => prev + 1);
+        if (session?.startedAt) {
+          const elapsed = Math.floor((Date.now() - session.startedAt) / 1000);
+          setDuration(elapsed > 0 ? elapsed : 0);
+        } else {
+          setDuration((prev) => prev + 1);
+        }
       }, 1000);
     }
     return () => {
@@ -201,12 +213,22 @@ export default function Observer({ navigation, route }) {
   }, [observingStarted, showSafetyModal, triggerSafetyCheck]);
 
   const performEmergencyAction = useCallback(async () => {
+    if (helpSent) return; // Prevent duplicate sends
+
     const locs = locationsRef.current;
-    if (!locs || locs.length === 0) return;
+    if (!locs || locs.length === 0) {
+      Alert.alert('Error', 'Unable to get location for SOS.');
+      return;
+    }
     const current = locs[locs.length - 1];
 
     const recipientPhone = session?.contact?.phone || contactParam?.phone;
-    if (!recipientPhone) return;
+    if (!recipientPhone) {
+      Alert.alert('Error', 'No phone number for trusted contact.');
+      return;
+    }
+
+    setHelpSent(true); // Mark as sent immediately
 
     try {
       const apiToken = process.env.EXPO_PUBLIC_TEXTLK_API_TOKEN;
@@ -274,7 +296,7 @@ View: https://www.google.com/maps?q=${current.lat},${current.lng}`;
 
   async function startSimulatedWalk() {
     // On native, we prefer real GPS. Only start simulation if no real signal received yet
-    if (observingStarted || (Platform.OS !== 'web' && locations.length > 0)) return;
+    if (simIntervalRef.current || (Platform.OS !== 'web' && locations.length > 0)) return;
 
     // Try to get actual current location to start simulation from there
     let startPos = { lat: 37.7749, lng: -122.4194 }; // Default SF
@@ -290,7 +312,14 @@ View: https://www.google.com/maps?q=${current.lat},${current.lng}`;
     if (!session) {
       // Small delay to ensure session starts outside of current effect cycle
       setTimeout(() => {
-        start(contactParam || { id: `sim-${Date.now()}`, name: contactName });
+        start(contactParam || { id: `sim-${Date.now()}`, name: contactName }, {
+          lat: simPosRef.current.lat,
+          lng: simPosRef.current.lng,
+          speed: 0,
+          accuracy: 5,
+          ts: Date.now(),
+          isSim: true
+        });
 
         // These context updates must also happen outside the sync effect cycle
         pushLocation({
@@ -688,18 +717,23 @@ View: https://www.google.com/maps?q=${current.lat},${current.lng}`;
       {/* Action Buttons (Fixed Footer) */}
       <View style={styles.footer}>
         <TouchableOpacity
-          style={styles.emergencyButton}
+          style={[styles.emergencyButton, helpSent && styles.emergencyButtonDisabled]}
           onPress={handleEmergency}
           activeOpacity={0.8}
+          disabled={helpSent}
         >
           <LinearGradient
-            colors={['#EF4444', '#991B1B']}
+            colors={helpSent ? ['#9CA3AF', '#6B7280'] : ['#EF4444', '#991B1B']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.emergencyButtonGradient}
           >
-            <MaterialCommunityIcons name="alert-octagon" size={20} color="#fff" />
-            <Text style={styles.emergencyButtonText}>SOS</Text>
+            <MaterialCommunityIcons
+              name={helpSent ? "check-circle-outline" : "alert-octagon"}
+              size={20}
+              color="#fff"
+            />
+            <Text style={styles.emergencyButtonText}>{helpSent ? 'HELP SENT' : 'SOS'}</Text>
           </LinearGradient>
         </TouchableOpacity>
 
@@ -1048,6 +1082,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 4,
+  },
+  emergencyButtonDisabled: {
+    shadowOpacity: 0.1,
+    elevation: 0,
+    opacity: 0.8,
   },
   emergencyButtonGradient: {
     flexDirection: 'row',

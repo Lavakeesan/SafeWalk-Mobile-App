@@ -4,7 +4,9 @@ import {
     signInWithEmailAndPassword,
     signOut,
     onAuthStateChanged,
-    updateProfile
+    updateProfile,
+    sendPasswordResetEmail,
+    updatePassword as firebaseUpdatePassword
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
@@ -31,18 +33,27 @@ export function AuthProvider({ children }) {
                 });
 
                 // Listen for real-time changes to the user's document in Firestore
-                unsubscribeDoc = onSnapshot(doc(db, 'users', firebaseUser.uid), (doc) => {
-                    if (doc.exists()) {
-                        const userData = doc.data();
-                        setUser({
+                const userDocRef = doc(db, 'users', firebaseUser.uid);
+
+                unsubscribeDoc = onSnapshot(userDocRef, (snapshot) => {
+                    if (snapshot.exists()) {
+                        const userData = snapshot.data();
+                        setUser(prev => ({
+                            ...prev,
                             uid: firebaseUser.uid,
                             email: firebaseUser.email,
                             displayName: userData.fullName || firebaseUser.displayName || '',
                             ...userData
-                        });
+                        }));
                     }
                 }, (err) => {
-                    console.error('Firestore snapshot error:', err);
+                    // If we get a permission error right at start, it might be the race condition
+                    // We'll log it but not let it crash the app experience if we're in the middle of registering
+                    if (err.code === 'permission-denied') {
+                        console.log('Firestore: Waiting for document permissions/creation...');
+                    } else {
+                        console.error('Firestore snapshot error:', err);
+                    }
                 });
             } else {
                 // User is signed out
@@ -117,8 +128,70 @@ export function AuthProvider({ children }) {
     };
 
     /**
+     * Send password reset email
+     * @param {string} email - User's email
+     */
+    const sendPasswordReset = async (email) => {
+        try {
+            setError(null);
+            setLoading(true);
+            await sendPasswordResetEmail(auth, email);
+            setLoading(false);
+            return { success: true };
+        } catch (err) {
+            setLoading(false);
+            setError(err.message);
+            return { success: false, error: err.message };
+        }
+    };
+
+    /**
      * Sign out current user
      */
+    /**
+     * Update user profile information
+     * @param {string} fullName - New full name
+     */
+    const updateUser = async (fullName) => {
+        try {
+            if (!auth.currentUser) throw new Error('No user logged in');
+
+            setLoading(true);
+            // Update Auth profile
+            await updateProfile(auth.currentUser, { displayName: fullName });
+
+            // Update Firestore document
+            await setDoc(doc(db, 'users', auth.currentUser.uid), {
+                fullName: fullName
+            }, { merge: true });
+
+            setLoading(false);
+            return { success: true };
+        } catch (err) {
+            setLoading(false);
+            console.error('Error updating profile:', err);
+            return { success: false, error: err.message };
+        }
+    };
+
+    /**
+     * Update user password
+     * @param {string} newPassword - New password
+     */
+    const updatePassword = async (newPassword) => {
+        try {
+            if (!auth.currentUser) throw new Error('No user logged in');
+            setLoading(true);
+            await firebaseUpdatePassword(auth.currentUser, newPassword);
+            setLoading(false);
+            return { success: true };
+        } catch (err) {
+            setLoading(false);
+            console.error('Error updating password:', err);
+            return { success: false, error: err.message };
+        }
+    };
+
     const logout = async () => {
         try {
             setError(null);
@@ -136,7 +209,10 @@ export function AuthProvider({ children }) {
         error,
         register,
         login,
-        logout
+        logout,
+        updateUser,
+        sendPasswordReset,
+        updatePassword
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

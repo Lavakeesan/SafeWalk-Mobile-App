@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useWalk } from '../context/WalkContext';
 import { useAuth } from '../context/AuthContext';
+import * as Location from 'expo-location';
 
 const { width } = Dimensions.get('window');
 
@@ -22,9 +23,30 @@ export default function Dashboard({ navigation }) {
   const { user } = useAuth();
   const [showContactModal, setShowContactModal] = useState(false);
 
-  const handleStartWalk = (contact) => {
+  const handleStartWalk = async (contact) => {
     setShowContactModal(false);
-    start(contact);
+
+    let startLoc = null;
+    try {
+      // Try to get current location to set as start location
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        if (loc) {
+          startLoc = {
+            lat: loc.coords.latitude,
+            lng: loc.coords.longitude,
+            speed: loc.coords.speed ?? 0,
+            accuracy: loc.coords.accuracy,
+            ts: Date.now(),
+          };
+        }
+      }
+    } catch (error) {
+      console.log('Error getting start location:', error);
+    }
+
+    start(contact, startLoc);
     navigation.navigate('Observer', { contact });
   };
 
@@ -39,11 +61,11 @@ export default function Dashboard({ navigation }) {
     },
     {
       id: '2',
-      title: 'Session History',
+      title: 'Walking History',
       subtitle: `${history.length} sessions`,
       icon: 'history',
       color: ['#8B5CF6', '#7C3AED'],
-      screen: null,
+      screen: 'History',
     },
     {
       id: '3',

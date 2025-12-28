@@ -95,20 +95,44 @@ export function WalkProvider({ children }) {
   }, [user?.uid, contacts]);
 
   /**
+   * Update an existing trusted contact
+   */
+  const updateContact = useCallback(async (updatedContact) => {
+    setContacts((prev) => {
+      const newContacts = prev.map((c) => (c.id === updatedContact.id ? updatedContact : c));
+
+      // Sync with Firebase
+      if (user?.uid) {
+        setDoc(doc(db, 'users', user.uid), {
+          trustedContacts: newContacts
+        }, { merge: true }).catch(err => console.error('Error updating contacts in Firebase:', err));
+      }
+
+      return newContacts;
+    });
+  }, [user?.uid]);
+
+  /**
    * Start a new walk session
    */
-  const start = useCallback((contact) => {
+  const start = useCallback((contact, startLocation = null) => {
     const id = Date.now().toString();
     const newSession = {
       id,
       contact,
       status: 'active',
-      startedAt: Date.now()
+      startedAt: Date.now(),
+      startLocation: startLocation,
+      endLocation: null,
+      endedAt: null
     };
     setSession(newSession);
-    setLocations([]);
+    setLocations(startLocation ? [startLocation] : []);
     setAlerts([]);
     lastUpdateRef.current = 0;
+
+    // We don't save to Firebase immediately here because we don't have all details yet (end time/location).
+    // It will be saved at the end of the session in the walkSessions history.
   }, []);
 
   /**
@@ -118,9 +142,28 @@ export function WalkProvider({ children }) {
   const end = useCallback(async () => {
     if (!session) return;
 
-    const ended = { ...session, status: 'ended', endedAt: Date.now() };
+    // Capture starting and ending locations from the points collected
+    const startLoc = locations.length > 0 ? {
+      lat: locations[0].lat,
+      lng: locations[0].lng,
+      ts: locations[0].ts
+    } : null;
 
-    // Update states sequentially
+    const endLoc = locations.length > 0 ? {
+      lat: locations[locations.length - 1].lat,
+      lng: locations[locations.length - 1].lng,
+      ts: locations[locations.length - 1].ts
+    } : null;
+
+    const ended = {
+      ...session,
+      status: 'ended',
+      endedAt: Date.now(),
+      startLocation: startLoc,
+      endLocation: endLoc
+    };
+
+    // Update states
     setSession(ended);
     setHistory((prev) => [...prev, ended]);
 
@@ -129,12 +172,32 @@ export function WalkProvider({ children }) {
         await setDoc(doc(db, 'users', user.uid), {
           walkSessions: arrayUnion(ended)
         }, { merge: true });
+        console.log('Session saved to Firebase successfully');
       } catch (error) {
         console.error('Error saving session to Firebase:', error);
       }
     }
     return ended;
-  }, [user?.uid, session]);
+  }, [user?.uid, session, locations]);
+
+  /**
+   * Delete a session from history
+   */
+  const deleteHistorySession = useCallback(async (id) => {
+    const sessionToDelete = history.find((s) => s.id === id);
+    setHistory((prev) => prev.filter((s) => s.id !== id));
+
+    if (user?.uid && sessionToDelete) {
+      try {
+        await updateDoc(doc(db, 'users', user.uid), {
+          walkSessions: arrayRemove(sessionToDelete)
+        });
+        console.log('Session removed from Firebase history');
+      } catch (error) {
+        console.error('Error removing session from Firebase:', error);
+      }
+    }
+  }, [user?.uid, history]);
 
   const pushLocation = useCallback((p) => {
     setLocations((prev) => [...prev, p]);
@@ -164,11 +227,13 @@ export function WalkProvider({ children }) {
       lastUpdateRef,
       contacts,
       addContact,
-      removeContact
+      removeContact,
+      updateContact,
+      deleteHistorySession
     }),
     [
       session, locations, alerts, history, start, end,
-      pushLocation, setAlert, contacts, addContact, removeContact, user?.uid
+      pushLocation, setAlert, contacts, addContact, removeContact, updateContact, user?.uid
     ]
   );
 

@@ -18,31 +18,62 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useWalk } from '../context/WalkContext';
 
 export default function TrustedContacts({ navigation }) {
-  const { contacts, addContact, removeContact, start } = useWalk();
+  const { contacts, addContact, removeContact, updateContact, start } = useWalk();
   const [showModal, setShowModal] = useState(false);
+  const [editingContact, setEditingContact] = useState(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
 
-  const handleAddContact = async () => {
+  const handleOpenAdd = () => {
+    setEditingContact(null);
+    setName('');
+    setEmail('');
+    setPhone('');
+    setShowModal(true);
+  };
+
+  const handleOpenEdit = (contact) => {
+    setEditingContact(contact);
+    setName(contact.name);
+    setEmail(contact.email || '');
+    setPhone(contact.phone);
+    setShowModal(true);
+  };
+
+  const handleSaveContact = async () => {
     if (!name.trim() || !phone.trim()) {
       Alert.alert('Error', 'Please enter name and phone number');
       return;
     }
 
-    const newContact = {
-      id: Date.now().toString(),
-      name: name.trim(),
-      email: email.trim(),
-      phone: phone.trim(),
-    };
+    if (editingContact) {
+      // Update existing
+      const updated = {
+        ...editingContact,
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+      };
+      await updateContact(updated);
+      Alert.alert('Success', 'Contact updated successfully!');
+    } else {
+      // Add new
+      const newContact = {
+        id: Date.now().toString(),
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+      };
+      await addContact(newContact);
+      Alert.alert('Success', 'Contact added successfully!');
+    }
 
-    await addContact(newContact);
     setName('');
     setEmail('');
     setPhone('');
+    setEditingContact(null);
     setShowModal(false);
-    Alert.alert('Success', 'Contact added successfully!');
   };
 
   const handleDeleteContact = (contact) => {
@@ -104,6 +135,12 @@ export default function TrustedContacts({ navigation }) {
         </View>
       </TouchableOpacity>
       <View style={styles.contactActions}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => handleOpenEdit(item)}
+        >
+          <MaterialCommunityIcons name="pencil-outline" size={22} color="#4F46E5" />
+        </TouchableOpacity>
         <TouchableOpacity
           style={styles.actionButton}
           onPress={() => handleStartWalk(item)}
@@ -175,7 +212,7 @@ export default function TrustedContacts({ navigation }) {
       {/* Add Button */}
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => setShowModal(true)}
+        onPress={handleOpenAdd}
         activeOpacity={0.9}
       >
         <LinearGradient
@@ -188,7 +225,7 @@ export default function TrustedContacts({ navigation }) {
         </LinearGradient>
       </TouchableOpacity>
 
-      {/* Add Contact Modal */}
+      {/* Add/Edit Contact Modal */}
       <Modal
         visible={showModal}
         animationType="slide"
@@ -206,7 +243,7 @@ export default function TrustedContacts({ navigation }) {
           />
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add Contact</Text>
+              <Text style={styles.modalTitle}>{editingContact ? 'Edit Contact' : 'Add Contact'}</Text>
               <TouchableOpacity onPress={() => setShowModal(false)}>
                 <MaterialCommunityIcons name="close" size={24} color="#6B7280" />
               </TouchableOpacity>
@@ -251,7 +288,7 @@ export default function TrustedContacts({ navigation }) {
 
               <TouchableOpacity
                 style={styles.addButton}
-                onPress={handleAddContact}
+                onPress={handleSaveContact}
                 activeOpacity={0.8}
               >
                 <LinearGradient
@@ -260,8 +297,8 @@ export default function TrustedContacts({ navigation }) {
                   end={{ x: 1, y: 0 }}
                   style={styles.addButtonGradient}
                 >
-                  <MaterialCommunityIcons name="check" size={20} color="#fff" />
-                  <Text style={styles.addButtonText}>Add Contact</Text>
+                  <MaterialCommunityIcons name={editingContact ? "content-save" : "check"} size={20} color="#fff" />
+                  <Text style={styles.addButtonText}>{editingContact ? 'Update Contact' : 'Add Contact'}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
