@@ -66,8 +66,8 @@ const SafeLeafletMap = (props) => {
                 style={{ height: '100%', width: '100%' }}
             >
                 <LeafletTileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://locationiq.com/">LocationIQ</a> | <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    url={`https://tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${process.env.EXPO_PUBLIC_LOCATIONIQ_API_KEY}`}
                 />
                 {children}
             </LeafletMapContainer>

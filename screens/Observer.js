@@ -533,7 +533,7 @@ View: https://www.google.com/maps?q=${current.lat},${current.lng}`;
               <MapView
                 ref={mapRef}
                 style={styles.map}
-                mapType={Platform.OS === 'android' ? "none" : "standard"}
+                mapType="none"
                 showsUserLocation={Platform.OS !== 'web'}
                 initialRegion={{
                   latitude: currentLocation.lat,
@@ -544,8 +544,8 @@ View: https://www.google.com/maps?q=${current.lat},${current.lng}`;
               >
                 {Platform.OS !== 'web' && (
                   <UrlTile
-                    urlTemplate="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    maximumZ={19}
+                    urlTemplate={`https://tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${process.env.EXPO_PUBLIC_LOCATIONIQ_API_KEY}`}
+                    maximumZ={20}
                     flipY={false}
                     tileSize={256}
                   />
@@ -596,7 +596,7 @@ View: https://www.google.com/maps?q=${current.lat},${current.lng}`;
                 </TouchableOpacity>
               )}
               <View style={styles.osmAttribution}>
-                <Text style={styles.osmAttributionText}>© OpenStreetMap contributors</Text>
+                <Text style={styles.osmAttributionText}>© LocationIQ | OpenStreetMap</Text>
               </View>
             </>
           ) : (
