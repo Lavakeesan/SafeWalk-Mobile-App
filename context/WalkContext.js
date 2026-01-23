@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useMemo, useRef, useState, useEffect, useCallback } from 'react';
-import { doc, updateDoc, arrayUnion, arrayRemove, getDoc, setDoc } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, arrayRemove, getDoc, setDoc, collection, getDocs, deleteDoc, addDoc, query, orderBy, where } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from './AuthContext';
 
@@ -37,14 +37,44 @@ export function WalkProvider({ children }) {
   const loadUserData = useCallback(async () => {
     if (!user?.uid) return;
     try {
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      if (userDoc.exists()) {
-        const data = userDoc.data();
-        setContacts(data.trustedContacts || []);
-        setHistory(data.walkSessions || []);
+      // 1. Load User Profile
+      try {
+        await getDoc(doc(db, 'users', user.uid));
+      } catch (e) {
+        console.error('Permission Denied: users table', e.message);
       }
+
+      // 2. Load Trusted Contacts
+      try {
+        const contactsRef = collection(db, 'trusted_contacts');
+        const contactsQuery = query(contactsRef, where('userId', '==', user.uid));
+        const contactsSnap = await getDocs(contactsQuery);
+        setContacts(contactsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      } catch (e) {
+        console.error('Permission Denied: trusted_contacts table', e.message);
+      }
+
+      // 3. Load Walk Sessions
+      try {
+        const sessionsRef = collection(db, 'walk_sessions');
+        const sessionsQuery = query(
+          sessionsRef,
+          where('userId', '==', user.uid),
+          orderBy('startedAt', 'desc')
+        );
+        const sessionsSnap = await getDocs(sessionsQuery);
+        setHistory(sessionsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      } catch (e) {
+        // This might fail if the index isn't created yet
+        if (e.message.includes('requires an index')) {
+          console.error('Action Required: Click the link in your console to create a Firestore Index for walk_sessions');
+        } else {
+          console.error('Permission Denied: walk_sessions table', e.message);
+        }
+      }
+
     } catch (error) {
-      console.error('Error loading user data:', error);
+      console.error('General Data Loading Error:', error);
     }
   }, [user?.uid]);
 
@@ -53,26 +83,29 @@ export function WalkProvider({ children }) {
    * Saves to Firebase and updates local state
    */
   const addContact = useCallback(async (contact) => {
-    const newContact = {
-      id: contact?.id || `c-${Date.now()}`,
+    const newContactData = {
+      userId: user.uid, // Relationship key
       name: contact?.name || 'Unnamed',
       email: contact?.email || '',
       phone: contact?.phone || '',
+      createdAt: new Date().toISOString()
     };
-
-    setContacts((prev) => [...prev, newContact]);
 
     if (user?.uid) {
       try {
-        await setDoc(doc(db, 'users', user.uid), {
-          trustedContacts: arrayUnion(newContact)
-        }, { merge: true });
+        const docRef = await addDoc(collection(db, 'trusted_contacts'), newContactData);
+        const contactWithId = { id: docRef.id, ...newContactData };
+        setContacts((prev) => [...prev, contactWithId]);
+        return contactWithId;
       } catch (error) {
         console.error('Error adding contact to Firebase:', error);
+        throw error;
       }
+    } else {
+      const localContact = { id: `c-${Date.now()}`, ...newContactData };
+      setContacts((prev) => [...prev, localContact]);
+      return localContact;
     }
-
-    return newContact;
   }, [user?.uid]);
 
   /**
@@ -80,36 +113,34 @@ export function WalkProvider({ children }) {
    * Removes from Firebase and updates local state
    */
   const removeContact = useCallback(async (id) => {
-    const contactToRemove = contacts.find((c) => c.id === id);
     setContacts((prev) => prev.filter((c) => c.id !== id));
 
-    if (user?.uid && contactToRemove) {
+    if (user?.uid) {
       try {
-        await updateDoc(doc(db, 'users', user.uid), {
-          trustedContacts: arrayRemove(contactToRemove)
-        });
+        await deleteDoc(doc(db, 'trusted_contacts', id));
       } catch (error) {
         console.error('Error removing contact from Firebase:', error);
       }
     }
-  }, [user?.uid, contacts]);
+  }, [user?.uid]);
 
   /**
    * Update an existing trusted contact
    */
   const updateContact = useCallback(async (updatedContact) => {
+    const { id, ...data } = updatedContact;
+
     setContacts((prev) => {
-      const newContacts = prev.map((c) => (c.id === updatedContact.id ? updatedContact : c));
-
-      // Sync with Firebase
-      if (user?.uid) {
-        setDoc(doc(db, 'users', user.uid), {
-          trustedContacts: newContacts
-        }, { merge: true }).catch(err => console.error('Error updating contacts in Firebase:', err));
-      }
-
-      return newContacts;
+      return prev.map((c) => (c.id === id ? updatedContact : c));
     });
+
+    if (user?.uid) {
+      try {
+        await setDoc(doc(db, 'trusted_contacts', id), data, { merge: true });
+      } catch (err) {
+        console.error('Error updating contact in Firebase:', err);
+      }
+    }
   }, [user?.uid]);
 
   /**
@@ -155,49 +186,50 @@ export function WalkProvider({ children }) {
       ts: locations[locations.length - 1].ts
     } : null;
 
-    const ended = {
-      ...session,
+    const sessionData = {
+      userId: user.uid, // Relationship key
+      contact: session.contact,
       status: 'ended',
+      startedAt: session.startedAt,
       endedAt: Date.now(),
       startLocation: startLoc,
       endLocation: endLoc
     };
 
-    // Update states
-    setSession(ended);
-    setHistory((prev) => [...prev, ended]);
-
     if (user?.uid) {
       try {
-        await setDoc(doc(db, 'users', user.uid), {
-          walkSessions: arrayUnion(ended)
-        }, { merge: true });
+        const docRef = await addDoc(collection(db, 'walk_sessions'), sessionData);
+        const ended = { id: docRef.id, ...sessionData };
+        setSession(ended);
+        setHistory((prev) => [ended, ...prev]); // Add to start of history
         console.log('Session saved to Firebase successfully');
+        return ended;
       } catch (error) {
         console.error('Error saving session to Firebase:', error);
       }
     }
-    return ended;
+
+    const localEnded = { id: session.id, ...sessionData };
+    setSession(localEnded);
+    setHistory((prev) => [...prev, localEnded]);
+    return localEnded;
   }, [user?.uid, session, locations]);
 
   /**
    * Delete a session from history
    */
   const deleteHistorySession = useCallback(async (id) => {
-    const sessionToDelete = history.find((s) => s.id === id);
     setHistory((prev) => prev.filter((s) => s.id !== id));
 
-    if (user?.uid && sessionToDelete) {
+    if (user?.uid) {
       try {
-        await updateDoc(doc(db, 'users', user.uid), {
-          walkSessions: arrayRemove(sessionToDelete)
-        });
+        await deleteDoc(doc(db, 'walk_sessions', id));
         console.log('Session removed from Firebase history');
       } catch (error) {
         console.error('Error removing session from Firebase:', error);
       }
     }
-  }, [user?.uid, history]);
+  }, [user?.uid]);
 
   const pushLocation = useCallback((p) => {
     setLocations((prev) => [...prev, p]);

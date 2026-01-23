@@ -136,7 +136,7 @@ export default function History({ navigation }) {
 
             {history.length > 0 ? (
                 <FlatList
-                    data={history.slice().reverse()}
+                    data={history}
                     renderItem={renderHistoryItem}
                     keyExtractor={(item) => item.id}
                     contentContainerStyle={styles.listContent}

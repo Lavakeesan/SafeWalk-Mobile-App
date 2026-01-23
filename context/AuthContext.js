@@ -94,9 +94,7 @@ export function AuthProvider({ children }) {
             await setDoc(doc(db, 'users', firebaseUser.uid), {
                 fullName,
                 email,
-                createdAt: new Date().toISOString(),
-                trustedContacts: [],
-                walkSessions: []
+                createdAt: new Date().toISOString()
             });
 
             setLoading(false);

@@ -16,7 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useWalk } from '../context/WalkContext';
 import * as Location from 'expo-location';
-import MapView, { Marker, Polyline, UrlTile } from 'react-native-maps';
+import MapView, { Marker, Polyline, UrlTile } from '../components/CustomMapView';
 
 const { width, height } = Dimensions.get('window');
 
@@ -528,28 +528,13 @@ View: https://www.google.com/maps?q=${current.lat},${current.lng}`;
 
         {/* Local Map View (Native Only) */}
         <View style={styles.mapContainer}>
-          {Platform.OS === 'web' ? (
-            <LinearGradient
-              colors={['#F3F4F6', '#E5E7EB']}
-              style={styles.mapPlaceholder}
-            >
-              <MaterialCommunityIcons name="web" size={64} color="#9CA3AF" />
-              <Text style={styles.mapText}>Map is only available on Mobile</Text>
-              {currentLocation && (
-                <View style={styles.coordinatesBox}>
-                  <Text style={styles.coordinatesText}>
-                    📍 {currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)}
-                  </Text>
-                </View>
-              )}
-            </LinearGradient>
-          ) : currentLocation ? (
+          {currentLocation ? (
             <>
               <MapView
                 ref={mapRef}
                 style={styles.map}
                 mapType={Platform.OS === 'android' ? "none" : "standard"}
-                showsUserLocation={true}
+                showsUserLocation={Platform.OS !== 'web'}
                 initialRegion={{
                   latitude: currentLocation.lat,
                   longitude: currentLocation.lng,
@@ -557,12 +542,14 @@ View: https://www.google.com/maps?q=${current.lat},${current.lng}`;
                   longitudeDelta: 0.015,
                 }}
               >
-                <UrlTile
-                  urlTemplate="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  maximumZ={19}
-                  flipY={false}
-                  tileSize={256}
-                />
+                {Platform.OS !== 'web' && (
+                  <UrlTile
+                    urlTemplate="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    maximumZ={19}
+                    flipY={false}
+                    tileSize={256}
+                  />
+                )}
                 {locations.length > 0 && (
                   <Marker
                     coordinate={{
@@ -599,13 +586,15 @@ View: https://www.google.com/maps?q=${current.lat},${current.lng}`;
               </MapView>
 
               {/* Floating Fit View Button */}
-              <TouchableOpacity
-                style={styles.fitButton}
-                onPress={fitView}
-                activeOpacity={0.7}
-              >
-                <MaterialCommunityIcons name="arrow-expand-all" size={20} color="#374151" />
-              </TouchableOpacity>
+              {Platform.OS !== 'web' && (
+                <TouchableOpacity
+                  style={styles.fitButton}
+                  onPress={fitView}
+                  activeOpacity={0.7}
+                >
+                  <MaterialCommunityIcons name="arrow-expand-all" size={20} color="#374151" />
+                </TouchableOpacity>
+              )}
               <View style={styles.osmAttribution}>
                 <Text style={styles.osmAttributionText}>© OpenStreetMap contributors</Text>
               </View>

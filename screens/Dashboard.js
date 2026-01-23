@@ -259,7 +259,7 @@ export default function Dashboard({ navigation }) {
               <Text style={styles.sectionTitle}>Recent Sessions</Text>
             </View>
             <FlatList
-              data={history.slice().reverse().slice(0, 5)}
+              data={history.slice(0, 5)}
               renderItem={renderHistoryItem}
               keyExtractor={(item) => item.id}
               scrollEnabled={false}
