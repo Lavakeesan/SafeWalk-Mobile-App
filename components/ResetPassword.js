@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View,
+  View ,
   Text,
   TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
+  ScrollView, 
   Alert,
   StyleSheet,
   StatusBar,
