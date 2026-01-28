@@ -101,8 +101,22 @@ export function AuthProvider({ children }) {
             return { success: true };
         } catch (err) {
             setLoading(false);
-            setError(err.message);
-            return { success: false, error: err.message };
+            console.error('Registration Error:', err.code, err.message);
+            let errorMessage = err.message;
+            
+            // Provide user-friendly error messages
+            if (err.code === 'auth/email-already-in-use') {
+                errorMessage = 'This email is already registered. Please sign in instead.';
+            } else if (err.code === 'auth/invalid-email') {
+                errorMessage = 'Invalid email address format.';
+            } else if (err.code === 'auth/weak-password') {
+                errorMessage = 'Password should be at least 6 characters.';
+            } else if (err.code === 'auth/operation-not-allowed') {
+                errorMessage = 'Email/Password authentication is not enabled. Please contact support.';
+            }
+            
+            setError(errorMessage);
+            return { success: false, error: errorMessage };
         }
     };
 
@@ -120,8 +134,24 @@ export function AuthProvider({ children }) {
             return { success: true };
         } catch (err) {
             setLoading(false);
-            setError(err.message);
-            return { success: false, error: err.message };
+            console.error('Login Error:', err.code, err.message);
+            let errorMessage = err.message;
+            
+            // Provide user-friendly error messages
+            if (err.code === 'auth/user-not-found') {
+                errorMessage = 'No account found with this email. Please register first.';
+            } else if (err.code === 'auth/wrong-password') {
+                errorMessage = 'Incorrect password. Please try again.';
+            } else if (err.code === 'auth/invalid-email') {
+                errorMessage = 'Invalid email address format.';
+            } else if (err.code === 'auth/user-disabled') {
+                errorMessage = 'This account has been disabled.';
+            } else if (err.code === 'auth/operation-not-allowed') {
+                errorMessage = 'Email/Password authentication is not enabled. Please contact support.';
+            }
+            
+            setError(errorMessage);
+            return { success: false, error: errorMessage };
         }
     };
 

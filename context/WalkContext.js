@@ -265,7 +265,7 @@ export function WalkProvider({ children }) {
     }),
     [
       session, locations, alerts, history, start, end,
-      pushLocation, setAlert, contacts, addContact, removeContact, updateContact, user?.uid
+      pushLocation, setAlert, contacts, addContact, removeContact, updateContact, deleteHistorySession, user?.uid
     ]
   );
 
