@@ -47,7 +47,7 @@ try {
         throw error;
     }
 }
-
+//hjhjh
 // Initialize Firebase Authentication with AsyncStorage persistence
 let auth;
 try {
