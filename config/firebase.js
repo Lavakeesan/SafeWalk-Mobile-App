@@ -14,7 +14,7 @@ const firebaseConfig = {
     appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || '1:867095959962:web:cb985359c4cee4867e4223'
 };
 
-// Initialize Firebase lavan
+// Initialize Firebase 
 let app;
 try {
     app = initializeApp(firebaseConfig);
