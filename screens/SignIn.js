@@ -43,7 +43,17 @@ export default function SignIn({ navigation }) {
     setLoading(false);
 
     if (result.success) {
-      navigation.navigate('Dashboard');
+      console.log('Login Successful!');
+      console.log('User Data:', result.user);
+      console.log('User Role:', result.user?.role);
+
+      if (result.user && result.user.role === 'admin') {
+        console.log('Redirecting to Admin Dashboard...');
+        navigation.navigate('AdminOverview');
+      } else {
+        console.log('Redirecting to User Dashboard...');
+        navigation.navigate('Dashboard');
+      }
     } else {
       Alert.alert('Sign In Failed', result.error || 'Please check your credentials');
     }
@@ -193,6 +203,8 @@ export default function SignIn({ navigation }) {
               <Text style={styles.signUpLink}>Create Account</Text>
             </TouchableOpacity>
           </View>
+
+
         </View>
       </ScrollView>
 

@@ -1,8 +1,10 @@
 // Firebase Configuration for SafeWalk App
 
 import { initializeApp, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 // Firebase configuration from environment variables with fallback
 const firebaseConfig = {
@@ -27,12 +29,18 @@ try {
     }
 }
 
-// Initialize Firebase Authentication with AsyncStorage persistence
+// Initialize Firebase Authentication with platform-specific persistence
 let auth;
 try {
-    auth = initializeAuth(app, {
-        persistence: getReactNativePersistence(AsyncStorage)
-    });
+    if (Platform.OS === 'web') {
+        // For web, use standard getAuth (persistence is handled automatically by Firebase)
+        auth = getAuth(app);
+    } else {
+        // For native platforms (iOS/Android), use AsyncStorage persistence
+        auth = initializeAuth(app, {
+            persistence: getReactNativePersistence(AsyncStorage)
+        });
+    }
 } catch (error) {
     // If auth already initialized, get existing instance
     if (error.code === 'auth/already-initialized') {
@@ -45,4 +53,4 @@ try {
 // Initialize Firestore
 const db = getFirestore(app);
 
-export { auth, db };
+export { auth, db, firebaseConfig };
