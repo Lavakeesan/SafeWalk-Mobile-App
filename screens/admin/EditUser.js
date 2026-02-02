@@ -10,11 +10,14 @@ import {
     Platform,
     Alert,
     Switch,
+    Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
+
+const { width } = Dimensions.get('window');
 
 export default function EditUser({ navigation, route }) {
     const { userId, user } = route.params;
@@ -23,12 +26,11 @@ export default function EditUser({ navigation, route }) {
         fullName: user?.name || '',
         email: user?.email || '',
         phone: user?.phone || '',
-        status: user?.status === 'active',
+        status: user?.status === 'active' || user?.isActive === true,
     });
     const [loading, setLoading] = useState(false);
 
     const handleSave = async () => {
-        // Validation
         if (!formData.fullName.trim()) {
             Alert.alert('Error', 'Please enter a name');
             return;
@@ -39,7 +41,6 @@ export default function EditUser({ navigation, route }) {
             return;
         }
 
-        // Basic email validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(formData.email)) {
             Alert.alert('Error', 'Please enter a valid email address');
@@ -48,7 +49,6 @@ export default function EditUser({ navigation, route }) {
 
         setLoading(true);
         try {
-            // Prepare update data
             const updateData = {
                 username: formData.fullName.trim(),
                 email: formData.email.trim().toLowerCase(),
@@ -56,12 +56,10 @@ export default function EditUser({ navigation, route }) {
                 updatedAt: new Date(),
             };
 
-            // Add phone if provided
             if (formData.phone && formData.phone.trim()) {
                 updateData.phone = formData.phone.trim();
             }
 
-            // Update user in Firestore
             const userRef = doc(db, 'users', userId);
             await updateDoc(userRef, updateData);
 
@@ -76,7 +74,17 @@ export default function EditUser({ navigation, route }) {
         }
     };
 
-
+    const InfoCard = ({ icon, label, value, color }) => (
+        <View style={styles.infoCard}>
+            <View style={[styles.infoIconContainer, { backgroundColor: `${color}15` }]}>
+                <MaterialCommunityIcons name={icon} size={22} color={color} />
+            </View>
+            <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>{label}</Text>
+                <Text style={styles.infoValue}>{value}</Text>
+            </View>
+        </View>
+    );
 
     return (
         <View style={styles.container}>
@@ -88,145 +96,161 @@ export default function EditUser({ navigation, route }) {
                     style={styles.backButton}
                     onPress={() => navigation.goBack()}
                 >
-                    <MaterialCommunityIcons name="arrow-left" size={24} color="#111827" />
+                    <MaterialCommunityIcons name="chevron-left" size={32} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Edit User Details</Text>
+                <View style={styles.headerTitleContainer}>
+                    <Text style={styles.headerTitle}>Edit User</Text>
+                    <Text style={styles.headerSubtitle}>Management Console</Text>
+                </View>
+                <TouchableOpacity
+                    style={styles.saveIconButton}
+                    onPress={handleSave}
+                    disabled={loading}
+                >
+                    <MaterialCommunityIcons
+                        name={loading ? "loading" : "check-circle"}
+                        size={28}
+                        color="#4F46E5"
+                    />
+                </TouchableOpacity>
             </View>
 
             <ScrollView
                 style={styles.content}
                 showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.scrollContent}
             >
-                {/* Profile Picture */}
-                <View style={styles.profileSection}>
-                    <View style={styles.avatarContainer}>
-                        <View style={styles.avatar}>
-                            <MaterialCommunityIcons name="account" size={60} color="#6B7280" />
-                        </View>
-                        <TouchableOpacity style={styles.cameraButton}>
-                            <MaterialCommunityIcons name="camera" size={18} color="#fff" />
-                        </TouchableOpacity>
-                    </View>
-                    <Text style={styles.profileName}>{formData.fullName || 'User Name'}</Text>
-                    <Text style={styles.profileId}>User ID: #{userId.substring(0, 6)}</Text>
-
-                    {/* User Stats */}
-                    {user && (
-                        <View style={styles.profileStats}>
-                            {user.createdAt && (
-                                <View style={styles.statItem}>
-                                    <MaterialCommunityIcons name="calendar" size={16} color="#6B7280" />
-                                    <Text style={styles.statText}>
-                                        Joined {new Date(user.createdAt.seconds ? user.createdAt.seconds * 1000 : user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-                                    </Text>
-                                </View>
-                            )}
-                            <View style={styles.profileStatsRow}>
-                                <View style={styles.miniStat}>
-                                    <MaterialCommunityIcons name="account-group" size={16} color="#4F46E5" />
-                                    <Text style={styles.miniStatText}>{user.trustedContactsCount || 0} contacts</Text>
-                                </View>
-                                <View style={styles.miniStat}>
-                                    <MaterialCommunityIcons name="map-marker-path" size={16} color="#10B981" />
-                                    <Text style={styles.miniStatText}>{user.walkSessionsCount || 0} walks</Text>
-                                </View>
-                            </View>
-                        </View>
-                    )}
-                </View>
-
-                {/* Personal Info Section */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>PERSONAL INFO</Text>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Full Name</Text>
-                        <View style={styles.inputWrapper}>
-                            <TextInput
-                                style={styles.input}
-                                value={formData.fullName}
-                                onChangeText={(text) => setFormData({ ...formData, fullName: text })}
-                                placeholder="Enter full name"
-                                placeholderTextColor="#9CA3AF"
-                            />
-                        </View>
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Email Address</Text>
-                        <View style={styles.inputWrapper}>
-                            <TextInput
-                                style={styles.input}
-                                value={formData.email}
-                                onChangeText={(text) => setFormData({ ...formData, email: text })}
-                                placeholder="Enter email address"
-                                placeholderTextColor="#9CA3AF"
-                                keyboardType="email-address"
-                                autoCapitalize="none"
-                            />
-                        </View>
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Phone Number</Text>
-                        <View style={styles.inputWrapper}>
-                            <TextInput
-                                style={styles.input}
-                                value={formData.phone}
-                                onChangeText={(text) => setFormData({ ...formData, phone: text })}
-                                placeholder="Enter phone number (optional)"
-                                placeholderTextColor="#9CA3AF"
-                                keyboardType="phone-pad"
-                            />
-                        </View>
-                    </View>
-                </View>
-
-                {/* Account Status Section */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>ACCOUNT STATUS</Text>
-
-                    <View style={styles.inputGroup}>
-                        <View style={styles.switchRow}>
-                            <View>
-                                <Text style={styles.switchLabel}>Status</Text>
-                                <Text style={styles.switchDescription}>
-                                    {formData.status ? 'Account is active' : 'Account is suspended'}
+                {/* Profile Overview Card */}
+                <View style={styles.profileCard}>
+                    <LinearGradient
+                        colors={['#4F46E5', '#7C3AED']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.profileGradient}
+                    >
+                        <View style={styles.avatarContainer}>
+                            <View style={styles.avatar}>
+                                <Text style={styles.avatarText}>
+                                    {formData.fullName.charAt(0).toUpperCase()}
                                 </Text>
                             </View>
-                            <Switch
-                                value={formData.status}
-                                onValueChange={(value) => setFormData({ ...formData, status: value })}
-                                trackColor={{ false: '#D1D5DB', true: '#93C5FD' }}
-                                thumbColor={formData.status ? '#3B82F6' : '#F3F4F6'}
-                                ios_backgroundColor="#D1D5DB"
-                            />
+                            <TouchableOpacity style={styles.editAvatarButton}>
+                                <MaterialCommunityIcons name="camera" size={16} color="#4F46E5" />
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={styles.userName}>{formData.fullName}</Text>
+                        <Text style={styles.userRoleText}>SafeWalk User • ID: {userId.substring(0, 8)}</Text>
+                    </LinearGradient>
+
+                    <View style={styles.quickStats}>
+                        <View style={styles.statBox}>
+                            <Text style={styles.statNumber}>{user.trustedContactsCount || 0}</Text>
+                            <Text style={styles.statLabel}>Contacts</Text>
+                        </View>
+                        <View style={styles.statDivider} />
+                        <View style={styles.statBox}>
+                            <Text style={styles.statNumber}>{user.walkSessionsCount || 0}</Text>
+                            <Text style={styles.statLabel}>Walks</Text>
+                        </View>
+                        <View style={styles.statDivider} />
+                        <View style={styles.statBox}>
+                            <View style={[styles.statusBadge, { backgroundColor: formData.status ? '#10B98120' : '#EF444420' }]}>
+                                <Text style={[styles.statusBadgeText, { color: formData.status ? '#10B981' : '#EF4444' }]}>
+                                    {formData.status ? 'ACTIVE' : 'SUSPENDED'}
+                                </Text>
+                            </View>
                         </View>
                     </View>
                 </View>
 
-                {/* Action Buttons */}
-                <View style={styles.actionButtons}>
+                {/* Form Section */}
+                <View style={styles.formContainer}>
+                    <Text style={styles.sectionHeading}>Account Details</Text>
+
+                    <View style={styles.inputGroup}>
+                        <View style={styles.inputLabelRow}>
+                            <MaterialCommunityIcons name="account-outline" size={18} color="#6B7280" />
+                            <Text style={styles.inputLabel}>Full Name</Text>
+                        </View>
+                        <TextInput
+                            style={styles.input}
+                            value={formData.fullName}
+                            onChangeText={(text) => setFormData({ ...formData, fullName: text })}
+                            placeholder="Enter full name"
+                            placeholderTextColor="#9CA3AF"
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <View style={styles.inputLabelRow}>
+                            <MaterialCommunityIcons name="email-outline" size={18} color="#6B7280" />
+                            <Text style={styles.inputLabel}>Email Address</Text>
+                        </View>
+                        <TextInput
+                            style={styles.input}
+                            value={formData.email}
+                            onChangeText={(text) => setFormData({ ...formData, email: text })}
+                            placeholder="Enter email address"
+                            placeholderTextColor="#9CA3AF"
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <View style={styles.inputLabelRow}>
+                            <MaterialCommunityIcons name="phone-outline" size={18} color="#6B7280" />
+                            <Text style={styles.inputLabel}>Phone Number</Text>
+                        </View>
+                        <TextInput
+                            style={styles.input}
+                            value={formData.phone}
+                            onChangeText={(text) => setFormData({ ...formData, phone: text })}
+                            placeholder="Not provided"
+                            placeholderTextColor="#9CA3AF"
+                            keyboardType="phone-pad"
+                        />
+                    </View>
+
+                    <Text style={[styles.sectionHeading, { marginTop: 10 }]}>Privileges & Status</Text>
+
+                    <View style={styles.statusCard}>
+                        <View style={styles.statusInfo}>
+                            <Text style={styles.statusTitle}>Academic Access</Text>
+                            <Text style={styles.statusDesc}>Toggle user's ability to use the app</Text>
+                        </View>
+                        <Switch
+                            value={formData.status}
+                            onValueChange={(value) => setFormData({ ...formData, status: value })}
+                            trackColor={{ false: '#E5E7EB', true: '#C7D2FE' }}
+                            thumbColor={formData.status ? '#4F46E5' : '#9CA3AF'}
+                            ios_backgroundColor="#E5E7EB"
+                        />
+                    </View>
+
                     <TouchableOpacity
-                        style={styles.saveButton}
+                        style={styles.primaryActionButton}
                         onPress={handleSave}
                         disabled={loading}
                     >
                         <LinearGradient
                             colors={['#4F46E5', '#7C3AED']}
-                            style={styles.saveButtonGradient}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.actionGradient}
                         >
-                            <Text style={styles.saveButtonText}>
-                                {loading ? 'Saving...' : 'Save Changes'}
+                            <Text style={styles.actionButtonText}>
+                                {loading ? 'UPDATING USER...' : 'UPDATE PROFILE'}
                             </Text>
+                            {!loading && <MaterialCommunityIcons name="arrow-right" size={20} color="#fff" />}
                         </LinearGradient>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={styles.cancelButton}
+                        style={styles.secondaryButton}
                         onPress={() => navigation.goBack()}
                     >
-                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                        <Text style={styles.secondaryButtonText}>Discard Changes</Text>
                     </TouchableOpacity>
                 </View>
             </ScrollView>
@@ -242,7 +266,7 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingTop: Platform.OS === 'ios' ? 50 : 20,
+        paddingTop: Platform.OS === 'ios' ? 60 : 30,
         paddingHorizontal: 20,
         paddingBottom: 20,
         backgroundColor: '#fff',
@@ -250,145 +274,227 @@ const styles = StyleSheet.create({
         borderBottomColor: '#F3F4F6',
     },
     backButton: {
-        marginRight: 16,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginLeft: -10,
+    },
+    headerTitleContainer: {
+        flex: 1,
+        marginLeft: 10,
     },
     headerTitle: {
         fontSize: 20,
-        fontWeight: '700',
+        fontWeight: '800',
         color: '#111827',
+    },
+    headerSubtitle: {
+        fontSize: 12,
+        color: '#6B7280',
+        fontWeight: '500',
+    },
+    saveIconButton: {
+        padding: 5,
     },
     content: {
         flex: 1,
     },
-    profileSection: {
-        alignItems: 'center',
-        paddingVertical: 32,
+    scrollContent: {
+        paddingBottom: 40,
+    },
+    profileCard: {
+        margin: 20,
         backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
+        borderRadius: 24,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.1,
+        shadowRadius: 20,
+        elevation: 5,
+    },
+    profileGradient: {
+        padding: 30,
+        alignItems: 'center',
     },
     avatarContainer: {
         position: 'relative',
-        marginBottom: 16,
+        marginBottom: 15,
     },
     avatar: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
-        backgroundColor: '#F3F4F6',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 4,
-        borderColor: '#fff',
-    },
-    cameraButton: {
-        position: 'absolute',
-        bottom: 0,
-        right: 0,
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: '#4F46E5',
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 3,
-        borderColor: '#fff',
+        borderColor: 'rgba(255, 255, 255, 0.5)',
     },
-    profileName: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#111827',
-        marginBottom: 4,
-    },
-    profileId: {
-        fontSize: 14,
-        color: '#6B7280',
-    },
-    section: {
-        paddingHorizontal: 20,
-        paddingVertical: 24,
-    },
-    sectionTitle: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#9CA3AF',
-        letterSpacing: 0.5,
-        marginBottom: 16,
-    },
-    inputGroup: {
-        marginBottom: 20,
-    },
-    inputLabel: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#374151',
-        marginBottom: 8,
-    },
-    inputWrapper: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        paddingHorizontal: 16,
-        height: 52,
-        justifyContent: 'center',
-    },
-    input: {
-        fontSize: 15,
-        color: '#111827',
-    },
-    switchRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        padding: 16,
-    },
-    switchLabel: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: '#111827',
-        marginBottom: 4,
-    },
-    switchDescription: {
-        fontSize: 13,
-        color: '#6B7280',
-    },
-    actionButtons: {
-        paddingHorizontal: 20,
-        paddingBottom: 40,
-    },
-    saveButton: {
-        borderRadius: 12,
-        overflow: 'hidden',
-        marginBottom: 12,
-        shadowColor: '#4F46E5',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 4,
-    },
-    saveButtonGradient: {
-        paddingVertical: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    saveButtonText: {
-        fontSize: 16,
-        fontWeight: '700',
+    avatarText: {
+        fontSize: 32,
+        fontWeight: '800',
         color: '#fff',
     },
-    cancelButton: {
-        paddingVertical: 16,
+    editAvatarButton: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        backgroundColor: '#fff',
+        width: 28,
+        height: 28,
+        borderRadius: 14,
         alignItems: 'center',
         justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 5,
     },
-    cancelButtonText: {
-        fontSize: 16,
+    userName: {
+        fontSize: 22,
+        fontWeight: '800',
+        color: '#fff',
+        marginBottom: 5,
+    },
+    userRoleText: {
+        fontSize: 13,
+        color: 'rgba(255, 255, 255, 0.8)',
+        fontWeight: '500',
+    },
+    quickStats: {
+        flexDirection: 'row',
+        paddingVertical: 20,
+        alignItems: 'center',
+        justifyContent: 'space-around',
+    },
+    statBox: {
+        alignItems: 'center',
+        flex: 1,
+    },
+    statNumber: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#111827',
+    },
+    statLabel: {
+        fontSize: 11,
+        color: '#6B7280',
         fontWeight: '600',
+        marginTop: 2,
+    },
+    statDivider: {
+        width: 1,
+        height: 30,
+        backgroundColor: '#F3F4F6',
+    },
+    statusBadge: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+    },
+    statusBadgeText: {
+        fontSize: 10,
+        fontWeight: '800',
+    },
+    formContainer: {
+        paddingHorizontal: 20,
+    },
+    sectionHeading: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: '#9CA3AF',
+        textTransform: 'uppercase',
+        letterSpacing: 1.5,
+        marginBottom: 20,
+        marginTop: 10,
+    },
+    inputGroup: {
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#F3F4F6',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.02,
+        shadowRadius: 10,
+    },
+    inputLabelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    inputLabel: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#374151',
+        marginLeft: 8,
+    },
+    input: {
+        fontSize: 16,
+        color: '#111827',
+        fontWeight: '600',
+        paddingVertical: 5,
+    },
+    statusCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#fff',
+        padding: 20,
+        borderRadius: 16,
+        marginBottom: 30,
+        borderWidth: 1,
+        borderColor: '#F3F4F6',
+    },
+    statusInfo: {
+        flex: 1,
+    },
+    statusTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 2,
+    },
+    statusDesc: {
+        fontSize: 12,
         color: '#6B7280',
     },
+    primaryActionButton: {
+        borderRadius: 16,
+        overflow: 'hidden',
+        shadowColor: '#4F46E5',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 15,
+        elevation: 8,
+    },
+    actionGradient: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 18,
+    },
+    actionButtonText: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: '#fff',
+        marginRight: 10,
+        letterSpacing: 1,
+    },
+    secondaryButton: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 20,
+        marginTop: 10,
+    },
+    secondaryButtonText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#EF4444',
+    }
 });

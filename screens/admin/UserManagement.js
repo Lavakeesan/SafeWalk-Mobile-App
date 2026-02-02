@@ -11,8 +11,10 @@ import {
     Image,
     Alert,
     ActivityIndicator,
+    Modal,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 
@@ -21,6 +23,9 @@ export default function UserManagement({ navigation }) {
     const [activeFilter, setActiveFilter] = useState('all');
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [userToDelete, setUserToDelete] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         loadUsers();
@@ -107,30 +112,29 @@ export default function UserManagement({ navigation }) {
         }
     };
 
-    const handleDeleteUser = async (userId, userName) => {
-        Alert.alert(
-            'Delete User',
-            `Are you sure you want to delete ${userName}? This action cannot be undone.`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            const userRef = doc(db, 'users', userId);
-                            await deleteDoc(userRef);
+    const handleDeleteUser = (userId, userName) => {
+        setUserToDelete({ id: userId, name: userName });
+        setShowDeleteModal(true);
+    };
 
-                            setUsers((prevUsers) => prevUsers.filter(u => u.id !== userId));
-                            Alert.alert('Success', 'User deleted successfully');
-                        } catch (error) {
-                            console.error('Error deleting user:', error);
-                            Alert.alert('Error', 'Failed to delete user: ' + error.message);
-                        }
-                    },
-                },
-            ]
-        );
+    const confirmDelete = async () => {
+        if (!userToDelete) return;
+
+        setIsDeleting(true);
+        try {
+            const userRef = doc(db, 'users', userToDelete.id);
+            await deleteDoc(userRef);
+
+            setUsers((prevUsers) => prevUsers.filter(u => u.id !== userToDelete.id));
+            setShowDeleteModal(false);
+            setUserToDelete(null);
+            Alert.alert('Success', 'User deleted successfully');
+        } catch (error) {
+            console.error('Error deleting user:', error);
+            Alert.alert('Error', 'Failed to delete user: ' + error.message);
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     const filteredUsers = users.filter(user => {
@@ -246,78 +250,209 @@ export default function UserManagement({ navigation }) {
 
     return (
         <View style={styles.container}>
-            <StatusBar barStyle="dark-content" />
+            <StatusBar barStyle="light-content" />
 
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={() => navigation.goBack()}
+            {/* Immersive Premium Header */}
+            <View style={styles.premiumHeaderWrapper}>
+                <LinearGradient
+                    colors={['#4F46E5', '#7C3AED']}
+                    style={styles.premiumHeaderGradient}
                 >
-                    <MaterialCommunityIcons name="arrow-left" size={24} color="#111827" />
-                </TouchableOpacity>
-                <View style={styles.headerTitleContainer}>
-                    <Text style={styles.headerTitle}>User Management</Text>
-                    <Text style={styles.headerSubtitle}>{users.length} total users</Text>
-                </View>
+                    <View style={styles.headerLayout}>
+                        <TouchableOpacity
+                            style={styles.premiumBackButton}
+                            onPress={() => navigation.goBack()}
+                        >
+                            <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
+                        </TouchableOpacity>
+                        <View style={styles.headerTitleLayer}>
+                            <Text style={styles.premiumTitleMain}>Member Directory</Text>
+                            <Text style={styles.premiumTitleSub}>Manage and monitor community users</Text>
+                        </View>
+                        <View style={styles.headerStatsBadge}>
+                            <Text style={styles.statBadgeValue}>{users.length}</Text>
+                            <Text style={styles.statBadgeLabel}>USERS</Text>
+                        </View>
+                    </View>
+
+                    {/* Integrated Search Box */}
+                    <View style={styles.integratedSearchBox}>
+                        <MaterialCommunityIcons name="magnify" size={22} color="rgba(255,255,255,0.7)" />
+                        <TextInput
+                            style={styles.searchInputElement}
+                            placeholder="Find member by name or email..."
+                            placeholderTextColor="rgba(255,255,255,0.6)"
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                        />
+                        {searchQuery !== '' && (
+                            <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                <MaterialCommunityIcons name="close-circle" size={18} color="#fff" />
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                </LinearGradient>
             </View>
 
-            {/* Search Bar */}
-            <View style={styles.searchContainer}>
-                <MaterialCommunityIcons name="magnify" size={20} color="#9CA3AF" />
-                <TextInput
-                    style={styles.searchInput}
-                    placeholder="Search by name, email, or phone..."
-                    placeholderTextColor="#9CA3AF"
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                />
-            </View>
-
-            {/* Filters */}
-            <View style={styles.filtersContainer}>
+            {/* Filter Ribbons */}
+            <View style={styles.filterSection}>
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.filtersContent}
+                    contentContainerStyle={styles.filterScrollContent}
                 >
-                    <FilterButton label="All Users" value="all" />
+                    <FilterButton label="All Accounts" value="all" />
                     <FilterButton label="Active" value="active" />
-                    <FilterButton label="Inactive" value="inactive" />
+                    <FilterButton label="Suspended" value="inactive" />
                 </ScrollView>
             </View>
 
-            {/* Users List */}
+            {/* Data Feed */}
             {loading ? (
-                <View style={styles.loadingContainer}>
+                <View style={styles.premiumLoadingContainer}>
                     <ActivityIndicator size="large" color="#4F46E5" />
-                    <Text style={styles.loadingText}>Loading users...</Text>
+                    <Text style={styles.premiumLoadingText}>Syncing Directory...</Text>
                 </View>
             ) : (
                 <ScrollView
-                    style={styles.usersList}
+                    style={styles.directoryList}
                     showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ paddingBottom: 100 }}
                 >
                     {filteredUsers.map((user) => (
-                        <UserItem key={user.id} user={user} />
+                        <TouchableOpacity
+                            key={user.id}
+                            style={styles.premiumUserCard}
+                            activeOpacity={0.9}
+                            onPress={() => navigation.navigate('EditUser', { userId: user.id, user })}
+                        >
+                            <View style={styles.userCardInfo}>
+                                <View style={styles.userAvatarBox}>
+                                    <LinearGradient
+                                        colors={['#EEF2FF', '#E0E7FF']}
+                                        style={styles.avatarInnerBox}
+                                    >
+                                        <Text style={styles.avatarLetter}>{user.name.charAt(0).toUpperCase()}</Text>
+                                    </LinearGradient>
+                                    <View style={[styles.statusIndicator, { backgroundColor: user.status === 'active' ? '#10B981' : '#EF4444' }]} />
+                                </View>
+
+                                <View style={styles.userMainContent}>
+                                    <View style={styles.userHeadRow}>
+                                        <Text style={styles.premiumUserName}>{user.name}</Text>
+                                        <View style={[styles.premiumStatusBadge, { backgroundColor: user.status === 'active' ? '#ECFDF5' : '#FEF2F2' }]}>
+                                            <Text style={[styles.premiumStatusText, { color: user.status === 'active' ? '#059669' : '#DC2626' }]}>
+                                                {user.status.toUpperCase()}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <Text style={styles.premiumUserEmail}>{user.email}</Text>
+
+                                    <View style={styles.premiumUserMetaRow}>
+                                        <View style={styles.premiumMetaItem}>
+                                            <MaterialCommunityIcons name="shield-account-outline" size={14} color="#94A3B8" />
+                                            <Text style={styles.premiumMetaText}>{user.trustedContactsCount} Contacts</Text>
+                                        </View>
+                                        <View style={styles.premiumMetaDivider} />
+                                        <View style={styles.premiumMetaItem}>
+                                            <MaterialCommunityIcons name="walk" size={14} color="#94A3B8" />
+                                            <Text style={styles.premiumMetaText}>{user.walkSessionsCount} Walks</Text>
+                                        </View>
+                                    </View>
+                                </View>
+                            </View>
+
+                            <View style={styles.userActionArea}>
+                                <TouchableOpacity
+                                    style={styles.userActionIcon}
+                                    onPress={() => navigation.navigate('EditUser', { userId: user.id, user })}
+                                >
+                                    <MaterialCommunityIcons name="pencil" size={18} color="#4F46E5" />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.userActionIcon, { backgroundColor: '#FEF2F2' }]}
+                                    onPress={() => handleDeleteUser(user.id, user.name)}
+                                >
+                                    <MaterialCommunityIcons name="trash-can-outline" size={18} color="#EF4444" />
+                                </TouchableOpacity>
+                            </View>
+                        </TouchableOpacity>
                     ))}
 
                     {filteredUsers.length === 0 && (
-                        <View style={styles.emptyState}>
-                            <MaterialCommunityIcons name="account-search" size={64} color="#D1D5DB" />
-                            <Text style={styles.emptyStateText}>No users found</Text>
+                        <View style={styles.premiumEmptyState}>
+                            <View style={styles.emptyIllustrationBox}>
+                                <MaterialCommunityIcons name="account-search-outline" size={80} color="#E2E8F0" />
+                            </View>
+                            <Text style={styles.emptyStateMainText}>No Members Found</Text>
+                            <Text style={styles.emptyStateSubText}>Try adjusting your search or filters to find a member.</Text>
                         </View>
                     )}
                 </ScrollView>
             )}
 
-            {/* Add User FAB */}
+            {/* Premium Add FAB */}
             <TouchableOpacity
-                style={styles.fab}
+                style={styles.premiumFab}
                 onPress={() => navigation.navigate('AddUser')}
             >
-                <MaterialCommunityIcons name="plus" size={28} color="#fff" />
+                <LinearGradient
+                    colors={['#4F46E5', '#7C3AED']}
+                    style={styles.fabGradientInner}
+                >
+                    <MaterialCommunityIcons name="plus" size={30} color="#fff" />
+                </LinearGradient>
             </TouchableOpacity>
+
+            {/* Delete Confirmation Modal */}
+            <Modal
+                visible={showDeleteModal}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowDeleteModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.deleteModalContent}>
+                        <View style={styles.warningIconBadge}>
+                            <MaterialCommunityIcons name="alert-outline" size={40} color="#EF4444" />
+                        </View>
+
+                        <Text style={styles.deleteModalTitle}>Delete User?</Text>
+                        <Text style={styles.deleteModalMessage}>
+                            Are you sure you want to delete <Text style={styles.highlightText}>{userToDelete?.name}</Text>?
+                            All associated data will be permanently removed. This action cannot be undone.
+                        </Text>
+
+                        <View style={styles.deleteModalActions}>
+                            <TouchableOpacity
+                                style={styles.cancelModalButton}
+                                onPress={() => {
+                                    setShowDeleteModal(false);
+                                    setUserToDelete(null);
+                                }}
+                                disabled={isDeleting}
+                            >
+                                <Text style={styles.cancelModalButtonText}>Cancel</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.confirmDeleteButton}
+                                onPress={confirmDelete}
+                                disabled={isDeleting}
+                            >
+                                {isDeleting ? (
+                                    <ActivityIndicator color="#fff" size="small" />
+                                ) : (
+                                    <View style={styles.confirmDeleteContent}>
+                                        <MaterialCommunityIcons name="delete-forever" size={18} color="#fff" />
+                                        <Text style={styles.confirmDeleteButtonText}>Delete</Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -325,229 +460,365 @@ export default function UserManagement({ navigation }) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#F8FAFC',
     },
-    header: {
+    premiumHeaderWrapper: {
+        width: '100%',
+    },
+    premiumHeaderGradient: {
+        paddingTop: Platform.OS === 'ios' ? 50 : 30,
+        paddingBottom: 24,
+        borderBottomLeftRadius: 35,
+        borderBottomRightRadius: 35,
+    },
+    headerLayout: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingTop: Platform.OS === 'ios' ? 50 : 20,
-        paddingHorizontal: 20,
-        paddingBottom: 20,
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
+        paddingHorizontal: 24,
+        marginBottom: 20,
     },
-    backButton: {
-        marginRight: 16,
+    premiumBackButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 14,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
-    headerTitleContainer: {
+    headerTitleLayer: {
         flex: 1,
+        marginLeft: 16,
     },
-    headerTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#111827',
+    premiumTitleMain: {
+        fontSize: 22,
+        fontWeight: '800',
+        color: '#fff',
+        letterSpacing: -0.5,
     },
-    headerSubtitle: {
-        fontSize: 13,
-        color: '#6B7280',
-        marginTop: 2,
+    premiumTitleSub: {
+        fontSize: 12,
+        color: 'rgba(255,255,255,0.7)',
+        fontWeight: '500',
     },
-    searchContainer: {
+    headerStatsBadge: {
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    statBadgeValue: {
+        fontSize: 16,
+        fontWeight: '800',
+        color: '#fff',
+    },
+    statBadgeLabel: {
+        fontSize: 8,
+        fontWeight: '800',
+        color: '#fff',
+        opacity: 0.8,
+    },
+    integratedSearchBox: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#fff',
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        borderRadius: 18,
         marginHorizontal: 20,
-        marginTop: 20,
-        marginBottom: 16,
-        borderRadius: 12,
         paddingHorizontal: 16,
-        height: 48,
+        height: 52,
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: 'rgba(255,255,255,0.1)',
     },
-    searchInput: {
+    searchInputElement: {
         flex: 1,
         marginLeft: 12,
         fontSize: 15,
-        color: '#111827',
+        color: '#fff',
+        fontWeight: '500',
     },
-    filtersContainer: {
-        marginBottom: 20,
+    filterSection: {
+        marginTop: 20,
+        marginBottom: 8,
     },
-    filtersContent: {
-        paddingHorizontal: 20,
-        gap: 12,
+    filterScrollContent: {
+        paddingHorizontal: 24,
+        gap: 10,
     },
     filterButton: {
-        paddingHorizontal: 20,
+        paddingHorizontal: 18,
         paddingVertical: 10,
-        borderRadius: 20,
+        borderRadius: 14,
         backgroundColor: '#fff',
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: '#E2E8F0',
     },
     filterButtonActive: {
         backgroundColor: '#4F46E5',
         borderColor: '#4F46E5',
+        shadowColor: '#4F46E5',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 4,
     },
     filterButtonText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#6B7280',
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#64748B',
     },
     filterButtonTextActive: {
         color: '#fff',
     },
-    loadingContainer: {
+    directoryList: {
         flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingVertical: 60,
+        paddingHorizontal: 24,
     },
-    loadingText: {
-        fontSize: 14,
-        color: '#6B7280',
-        marginTop: 12,
-    },
-    usersList: {
-        flex: 1,
-        paddingHorizontal: 20,
-    },
-    userItem: {
+    premiumUserCard: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    userAvatar: {
-        width: 48,
-        height: 48,
         borderRadius: 24,
-        backgroundColor: '#F3F4F6',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 12,
+        padding: 16,
+        marginBottom: 16,
+        shadowColor: '#64748B',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 10,
+        elevation: 2,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
     },
-    userInfo: {
+    userCardInfo: {
         flex: 1,
-    },
-    userNameRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 4,
     },
-    userName: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: '#111827',
-        marginRight: 8,
+    userAvatarBox: {
+        position: 'relative',
+        marginRight: 16,
     },
-    statusBadge: {
+    avatarInnerBox: {
+        width: 52,
+        height: 52,
+        borderRadius: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    avatarLetter: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#4F46E5',
+    },
+    statusIndicator: {
+        position: 'absolute',
+        bottom: -2,
+        right: -2,
+        width: 14,
+        height: 14,
+        borderRadius: 7,
+        borderWidth: 2.5,
+        borderColor: '#fff',
+    },
+    userMainContent: {
+        flex: 1,
+    },
+    userHeadRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 2,
+        gap: 8,
+    },
+    premiumUserName: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#1E293B',
+    },
+    premiumStatusBadge: {
         paddingHorizontal: 8,
         paddingVertical: 2,
         borderRadius: 6,
     },
-    statusActive: {
-        backgroundColor: '#D1FAE5',
-    },
-    statusInactive: {
-        backgroundColor: '#FEE2E2',
-    },
-    statusText: {
+    premiumStatusText: {
         fontSize: 10,
-        fontWeight: '700',
-        letterSpacing: 0.5,
+        fontWeight: '800',
+        letterSpacing: 0.2,
     },
-    statusTextActive: {
-        color: '#059669',
-    },
-    statusTextInactive: {
-        color: '#DC2626',
-    },
-    userEmail: {
+    premiumUserEmail: {
         fontSize: 13,
-        color: '#6B7280',
-        marginBottom: 4,
+        color: '#64748B',
+        marginBottom: 8,
     },
-    userDetailRow: {
+    premiumUserMetaRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 4,
-        gap: 6,
+        gap: 12,
     },
-    userDetailText: {
-        fontSize: 12,
-        color: '#6B7280',
-    },
-    userMetaRow: {
-        marginTop: 6,
-        marginBottom: 6,
-    },
-    metaItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
-    metaText: {
-        fontSize: 11,
-        color: '#9CA3AF',
-    },
-    userStatsRow: {
-        flexDirection: 'row',
-        marginTop: 8,
-        gap: 16,
-    },
-    statItem: {
+    premiumMetaItem: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
     },
-    statText: {
+    premiumMetaDivider: {
+        width: 4,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: '#E2E8F0',
+    },
+    premiumMetaText: {
         fontSize: 11,
         fontWeight: '600',
-        color: '#6B7280',
+        color: '#94A3B8',
     },
-    userActions: {
-        flexDirection: 'row',
+    userActionArea: {
+        marginLeft: 12,
         gap: 8,
     },
-    actionButton: {
+    userActionIcon: {
         width: 36,
         height: 36,
-        borderRadius: 8,
-        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        backgroundColor: '#EEF2FF',
         alignItems: 'center',
         justifyContent: 'center',
     },
-    emptyState: {
+    premiumLoadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    premiumLoadingText: {
+        marginTop: 12,
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#64748B',
+    },
+    premiumEmptyState: {
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 60,
+        paddingVertical: 80,
     },
-    emptyStateText: {
-        fontSize: 16,
-        color: '#9CA3AF',
-        marginTop: 16,
+    emptyIllustrationBox: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        backgroundColor: '#F8FAFC',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 24,
     },
-    fab: {
+    emptyStateMainText: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#1E293B',
+        marginBottom: 8,
+    },
+    emptyStateSubText: {
+        fontSize: 14,
+        color: '#94A3B8',
+        textAlign: 'center',
+        paddingHorizontal: 40,
+        lineHeight: 20,
+    },
+    premiumFab: {
         position: 'absolute',
         bottom: 30,
-        right: 30,
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: '#4F46E5',
+        right: 24,
+        shadowColor: '#4F46E5',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 8,
+    },
+    fabGradientInner: {
+        width: 60,
+        height: 60,
+        borderRadius: 20,
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#4F46E5',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 8,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(15, 23, 42, 0.6)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 24,
+    },
+    deleteModalContent: {
+        backgroundColor: '#fff',
+        width: '100%',
+        borderRadius: 30,
+        padding: 28,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 20 },
+        shadowOpacity: 0.15,
+        shadowRadius: 30,
+        elevation: 10,
+    },
+    warningIconBadge: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: '#FEF2F2',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 20,
+    },
+    deleteModalTitle: {
+        fontSize: 22,
+        fontWeight: '800',
+        color: '#1E293B',
+        marginBottom: 10,
+    },
+    deleteModalMessage: {
+        fontSize: 15,
+        color: '#64748B',
+        textAlign: 'center',
+        lineHeight: 22,
+        marginBottom: 30,
+    },
+    highlightText: {
+        color: '#1E293B',
+        fontWeight: '800',
+    },
+    deleteModalActions: {
+        flexDirection: 'row',
+        width: '100%',
+        gap: 12,
+    },
+    cancelModalButton: {
+        flex: 1,
+        height: 56,
+        borderRadius: 16,
+        backgroundColor: '#F1F5F9',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    cancelModalButtonText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#64748B',
+    },
+    confirmDeleteButton: {
+        flex: 1,
+        height: 56,
+        borderRadius: 16,
+        backgroundColor: '#EF4444',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#EF4444',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.2,
+        shadowRadius: 12,
+    },
+    confirmDeleteContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    confirmDeleteButtonText: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: '#fff',
     },
 });
