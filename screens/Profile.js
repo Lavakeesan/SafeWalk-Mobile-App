@@ -11,16 +11,22 @@ import {
     Modal,
     TextInput,
     ActivityIndicator,
+    Dimensions,
+    KeyboardAvoidingView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+
+const { width } = Dimensions.get('window');
 
 export default function Profile({ navigation }) {
     const { user, logout, updateUser, updatePassword } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
     const [isChangingPassword, setIsChangingPassword] = useState(false);
     const [newName, setNewName] = useState(user?.displayName || '');
+    const [newEmail, setNewEmail] = useState(user?.email || '');
+    const [newPhone, setNewPhone] = useState(user?.phone || '');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [updating, setUpdating] = useState(false);
@@ -33,7 +39,7 @@ export default function Profile({ navigation }) {
         }
 
         setUpdating(true);
-        const result = await updateUser(newName.trim());
+        const result = await updateUser(newName.trim(), newEmail.trim(), newPhone.trim());
         setUpdating(false);
 
         if (result.success) {
@@ -64,7 +70,6 @@ export default function Profile({ navigation }) {
             setConfirmPassword('');
             Alert.alert('Success', 'Password updated successfully');
         } else {
-            // For sensitive operations like password change, Firebase might require recent login
             if (result.error?.includes('requires-recent-login')) {
                 Alert.alert(
                     'Security Requirement',
@@ -106,22 +111,29 @@ export default function Profile({ navigation }) {
             id: '1',
             title: 'Full Name',
             value: user?.displayName || 'Not set',
-            icon: 'account-circle-outline',
-            color: '#3B82F6',
+            icon: 'account-circle',
+            color: '#4F46E5',
         },
         {
             id: '2',
             title: 'Email Address',
             value: user?.email || 'Not set',
-            icon: 'email-outline',
-            color: '#8B5CF6',
+            icon: 'email',
+            color: '#7C3AED',
         },
         {
             id: '3',
-            title: 'User ID',
-            value: user?.uid?.substring(0, 20) + '...' || 'Not available',
-            icon: 'identifier',
+            title: 'Phone Number',
+            value: user?.phone || 'Not set',
+            icon: 'phone',
             color: '#10B981',
+        },
+        {
+            id: '4',
+            title: 'User ID',
+            value: user?.uid?.substring(0, 16) + '...' || 'Not available',
+            icon: 'shield-check',
+            color: '#64748B',
         },
     ];
 
@@ -129,30 +141,23 @@ export default function Profile({ navigation }) {
         {
             id: '1',
             title: 'Privacy Policy',
-            icon: 'shield-lock-outline',
-            color: '#6B7280',
-            onPress: () => Alert.alert('Privacy Policy', 'Privacy policy content here'),
+            icon: 'shield-lock',
+            color: '#64748B',
+            onPress: () => Alert.alert('Privacy Policy', 'Your data is encrypted and secure.'),
         },
         {
             id: '2',
             title: 'Terms & Conditions',
-            icon: 'file-document-outline',
-            color: '#6B7280',
-            onPress: () => Alert.alert('Terms & Conditions', 'Terms and conditions content here'),
+            icon: 'file-document',
+            color: '#64748B',
+            onPress: () => Alert.alert('Terms & Conditions', 'By using SafeWalk, you agree to our terms.'),
         },
         {
             id: '3',
             title: 'Help & Support',
-            icon: 'help-circle-outline',
-            color: '#6B7280',
-            onPress: () => Alert.alert('Help & Support', 'Contact support at support@safewalk.com'),
-        },
-        {
-            id: '4',
-            title: 'Sign Out',
-            icon: 'logout',
-            color: '#EF4444',
-            onPress: handleSignOut,
+            icon: 'help-circle',
+            color: '#64748B',
+            onPress: () => Alert.alert('Support', 'Contact us at help@safewalk.app'),
         },
     ];
 
@@ -164,239 +169,316 @@ export default function Profile({ navigation }) {
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
-                bounces={true}
             >
-                {/* Header Section (Now inside ScrollView for better stability) */}
-                <LinearGradient
-                    colors={['#10B981', '#059669']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.header}
-                >
-                    <View style={styles.headerContent}>
-                        <TouchableOpacity
-                            style={styles.backButton}
-                            onPress={() => navigation.goBack()}
-                        >
-                            <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
-                        </TouchableOpacity>
-                        <Text style={styles.headerTitle}>Profile</Text>
-                        <View style={{ width: 40 }} />
-                    </View>
-
-                    {/* Profile Info Row */}
-                    <View style={styles.profileInfoContainer}>
-                        {/* Profile Avatar */}
-                        <View style={styles.avatarContainer}>
-                            <View style={styles.avatar}>
-                                <Text style={styles.avatarText}>
-                                    {user?.displayName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
-                                </Text>
-                            </View>
-                            <View style={styles.verifiedBadge}>
-                                <MaterialCommunityIcons name="check-circle" size={16} color="#100081" />
-                            </View>
+                {/* Premium Header */}
+                <View style={styles.premiumHeaderBox}>
+                    <LinearGradient
+                        colors={['#4F46E5', '#7C3AED']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.premiumHeaderGradient}
+                    >
+                        <View style={styles.headerTopBar}>
+                            <TouchableOpacity
+                                style={styles.premiumBackButton}
+                                onPress={() => navigation.goBack()}
+                            >
+                                <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
+                            </TouchableOpacity>
+                            <Text style={styles.premiumHeaderTitle}>Account Profile</Text>
+                            <View style={{ width: 44 }} />
                         </View>
 
-                        <View style={styles.userInfo}>
-                            <Text style={styles.userName}>{user?.displayName || 'User'}</Text>
-                            <Text style={styles.userEmail}>{user?.email || 'No email'}</Text>
+                        <View style={styles.heroProfileSection}>
+                            <View style={styles.premiumAvatarContainer}>
+                                <LinearGradient
+                                    colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.05)']}
+                                    style={styles.avatarRing}
+                                >
+                                    <View style={styles.avatarInner}>
+                                        <Text style={styles.avatarInitialText}>
+                                            {user?.displayName?.charAt(0)?.toUpperCase() || 'U'}
+                                        </Text>
+                                    </View>
+                                </LinearGradient>
+                                <View style={styles.activeStatusBadge} />
+                            </View>
+
+                            <View style={styles.heroNameGroup}>
+                                <Text style={styles.heroNameText}>{user?.displayName || 'Safe User'}</Text>
+                            </View>
 
                             <TouchableOpacity
-                                style={styles.editProfileButton}
+                                style={styles.premiumEditFab}
                                 onPress={() => {
                                     setNewName(user?.displayName || '');
+                                    setNewEmail(user?.email || '');
+                                    setNewPhone(user?.phone || '');
                                     setIsEditing(true);
                                 }}
                             >
-                                <MaterialCommunityIcons name="pencil-outline" size={14} color="#fff" />
-                                <Text style={styles.editProfileText}>Edit Profile</Text>
+                                <LinearGradient
+                                    colors={['rgba(255,255,255,0.25)', 'rgba(255,255,255,0.1)']}
+                                    style={styles.glassButtonInner}
+                                >
+                                    <MaterialCommunityIcons name="account-edit" size={18} color="#fff" />
+                                    <Text style={styles.glassButtonText}>Edit Details</Text>
+                                </LinearGradient>
                             </TouchableOpacity>
                         </View>
-                    </View>
-                </LinearGradient>
+                    </LinearGradient>
+                </View>
 
-                {/* Account Information */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Account Information</Text>
+                {/* Account Details Section */}
+                <View style={styles.contentSection}>
+                    <View style={styles.sectionHeaderRow}>
+                        <MaterialCommunityIcons name="information-outline" size={18} color="#94A3B8" />
+                    </View>
+
                     {profileOptions.map((option) => (
-                        <View key={option.id} style={styles.optionCard}>
-                            <View style={[styles.optionIcon, { backgroundColor: option.color + '15' }]}>
+                        <View key={option.id} style={styles.premiumOptionCard}>
+                            <View style={[styles.optionIconBox, { backgroundColor: option.color + '15' }]}>
                                 <MaterialCommunityIcons name={option.icon} size={22} color={option.color} />
                             </View>
-                            <View style={styles.optionContent}>
-                                <Text style={styles.optionTitle}>{option.title}</Text>
-                                <Text style={styles.optionValue} numberOfLines={1}>
-                                    {option.value}
-                                </Text>
+                            <View style={styles.optionInfoBox}>
+                                <Text style={styles.optionLabelText}>{option.title}</Text>
+                                <Text style={styles.optionValueText}>{option.value}</Text>
                             </View>
                         </View>
                     ))}
-                </View>
 
-                {/* App Settings */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Security</Text>
+                    <View style={[styles.sectionHeaderRow, { marginTop: 24 }]}>
+                        <Text style={styles.premiumSectionTitle}>Privacy & Security</Text>
+                    </View>
+
                     <TouchableOpacity
-                        style={styles.actionCard}
+                        style={styles.premiumActionCard}
                         onPress={() => setIsChangingPassword(true)}
                         activeOpacity={0.7}
                     >
-                        <View style={[styles.actionIcon, { backgroundColor: '#F59E0B15' }]}>
+                        <View style={[styles.actionIconBox, { backgroundColor: '#F59E0B15' }]}>
                             <MaterialCommunityIcons name="lock-reset" size={22} color="#F59E0B" />
                         </View>
-                        <Text style={styles.actionTitle}>Change Password</Text>
-                        <MaterialCommunityIcons name="chevron-right" size={20} color="#9CA3AF" />
+                        <Text style={styles.actionLabelText}>Update Security Password</Text>
+                        <MaterialCommunityIcons name="chevron-right" size={20} color="#94A3B8" />
                     </TouchableOpacity>
-                </View>
 
-                {/* App Settings */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>App Settings</Text>
                     {actionOptions.map((option) => (
                         <TouchableOpacity
                             key={option.id}
-                            style={styles.actionCard}
+                            style={styles.premiumActionCard}
                             onPress={option.onPress}
                             activeOpacity={0.7}
                         >
-                            <View style={[styles.actionIcon, { backgroundColor: option.color + '15' }]}>
+                            <View style={[styles.actionIconBox, { backgroundColor: option.color + '15' }]}>
                                 <MaterialCommunityIcons name={option.icon} size={22} color={option.color} />
                             </View>
-                            <Text style={styles.actionTitle}>{option.title}</Text>
-                            <MaterialCommunityIcons name="chevron-right" size={20} color="#9CA3AF" />
+                            <Text style={styles.actionLabelText}>{option.title}</Text>
+                            <MaterialCommunityIcons name="chevron-right" size={20} color="#94A3B8" />
                         </TouchableOpacity>
                     ))}
+
+                    {/* Elite Sign Out Zone */}
+                    <TouchableOpacity
+                        style={styles.premiumSignOutCard}
+                        onPress={handleSignOut}
+                        activeOpacity={0.8}
+                    >
+                        <LinearGradient
+                            colors={['#EF444410', '#EF444405']}
+                            style={styles.signOutInner}
+                        >
+                            <View style={styles.signOutIconContainer}>
+                                <MaterialCommunityIcons name="logout-variant" size={24} color="#EF4444" />
+                            </View>
+                            <Text style={styles.signOutTextMain}>Sign Out from Device</Text>
+                            <MaterialCommunityIcons name="chevron-right" size={20} color="#EF4444" />
+                        </LinearGradient>
+                    </TouchableOpacity>
                 </View>
 
-                {/* App Version */}
-                <View style={styles.versionContainer}>
-                    <Text style={styles.versionText}>SafeWalk v1.0.0</Text>
-                    <Text style={styles.versionSubtext}>Made with ❤️ for your safety</Text>
+                {/* Footer Attribution */}
+                <View style={styles.premiumFooter}>
+                    <Text style={styles.footerAppTitle}>SafeWalk Premium</Text>
+                    <Text style={styles.footerVersionText}>Version 1.2.0 • Build 2402</Text>
+                    <View style={styles.footerDivider} />
+                    <Text style={styles.footerLegalText}>© 2026 SafeWalk Infrastructure. All rights reserved.</Text>
                 </View>
-
             </ScrollView>
 
-            {/* Edit Profile Modal */}
+            {/* Premium Edit Profile Modal */}
             <Modal
                 visible={isEditing}
                 transparent={true}
                 animationType="fade"
                 onRequestClose={() => setIsEditing(false)}
             >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Edit Profile</Text>
-                            <TouchableOpacity onPress={() => setIsEditing(false)}>
-                                <MaterialCommunityIcons name="close" size={24} color="#6B7280" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <View style={styles.modalBody}>
-                            <Text style={styles.inputLabel}>Full Name</Text>
-                            <View style={styles.inputContainer}>
-                                <MaterialCommunityIcons name="account-outline" size={20} color="#6B7280" />
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Enter full name"
-                                    value={newName}
-                                    onChangeText={setNewName}
-                                    autoFocus={true}
-                                />
-                            </View>
-
-                            <TouchableOpacity
-                                style={styles.updateButton}
-                                onPress={handleUpdateProfile}
-                                disabled={updating}
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={styles.modalOverlay}
+                >
+                    <View style={styles.premiumModalSheet}>
+                        <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
+                            <LinearGradient
+                                colors={['#4F46E5', '#3730A3']}
+                                style={styles.modalHeaderGradient}
                             >
-                                <LinearGradient
-                                    colors={['#10B981', '#059669']}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 0 }}
-                                    style={styles.updateGradient}
+                                <View style={styles.modalTitleBox}>
+                                    <Text style={styles.modalTitlePremium}>Identity settings</Text>
+                                    <Text style={styles.modalSubTitlePremium}>Update your profile information</Text>
+                                </View>
+                                <TouchableOpacity
+                                    style={styles.modalCloseButton}
+                                    onPress={() => setIsEditing(false)}
                                 >
-                                    {updating ? (
-                                        <ActivityIndicator color="#fff" size="small" />
-                                    ) : (
-                                        <>
-                                            <MaterialCommunityIcons name="check" size={20} color="#fff" />
-                                            <Text style={styles.updateButtonText}>Save Changes</Text>
-                                        </>
-                                    )}
-                                </LinearGradient>
-                            </TouchableOpacity>
-                        </View>
+                                    <MaterialCommunityIcons name="close" size={20} color="#fff" />
+                                </TouchableOpacity>
+                            </LinearGradient>
+
+                            <View style={styles.modalBodyFields}>
+                                <Text style={styles.premiumFieldLabel}>Full Name</Text>
+                                <View style={styles.premiumInputContainer}>
+                                    <MaterialCommunityIcons name="account-details-outline" size={20} color="#4F46E5" />
+                                    <TextInput
+                                        style={styles.premiumTextInput}
+                                        placeholder="Enter your name"
+                                        placeholderTextColor="#94A3B8"
+                                        value={newName}
+                                        onChangeText={setNewName}
+                                        autoFocus={true}
+                                    />
+                                </View>
+
+                                <Text style={styles.premiumFieldLabel}>Email Address</Text>
+                                <View style={styles.premiumInputContainer}>
+                                    <MaterialCommunityIcons name="email-outline" size={20} color="#4F46E5" />
+                                    <TextInput
+                                        style={styles.premiumTextInput}
+                                        placeholder="Enter your email"
+                                        placeholderTextColor="#94A3B8"
+                                        value={newEmail}
+                                        onChangeText={setNewEmail}
+                                        keyboardType="email-address"
+                                    />
+                                </View>
+
+                                <Text style={styles.premiumFieldLabel}>Phone Number</Text>
+                                <View style={styles.premiumInputContainer}>
+                                    <MaterialCommunityIcons name="phone-outline" size={20} color="#4F46E5" />
+                                    <TextInput
+                                        style={styles.premiumTextInput}
+                                        placeholder="Enter your phone number"
+                                        placeholderTextColor="#94A3B8"
+                                        value={newPhone}
+                                        onChangeText={setNewPhone}
+                                        keyboardType="phone-pad"
+                                    />
+                                </View>
+
+                                <TouchableOpacity
+                                    style={styles.premiumPrimaryButton}
+                                    onPress={handleUpdateProfile}
+                                    disabled={updating}
+                                >
+                                    <LinearGradient
+                                        colors={['#4F46E5', '#7C3AED']}
+                                        style={styles.buttonGradientInner}
+                                    >
+                                        {updating ? (
+                                            <ActivityIndicator color="#fff" size="small" />
+                                        ) : (
+                                            <>
+                                                <MaterialCommunityIcons name="check-decagram" size={20} color="#fff" />
+                                                <Text style={styles.primaryButtonText}>Sync Changes</Text>
+                                            </>
+                                        )}
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                            </View>
+                        </ScrollView>
                     </View>
-                </View>
+                </KeyboardAvoidingView>
             </Modal>
 
-            {/* Change Password Modal */}
+            {/* Premium Change Password Modal */}
             <Modal
                 visible={isChangingPassword}
                 transparent={true}
                 animationType="fade"
                 onRequestClose={() => setIsChangingPassword(false)}
             >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Change Password</Text>
-                            <TouchableOpacity onPress={() => setIsChangingPassword(false)}>
-                                <MaterialCommunityIcons name="close" size={24} color="#6B7280" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <View style={styles.modalBody}>
-                            <Text style={styles.inputLabel}>New Password</Text>
-                            <View style={styles.inputContainer}>
-                                <MaterialCommunityIcons name="lock-outline" size={20} color="#6B7280" />
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="At least 6 characters"
-                                    value={newPassword}
-                                    onChangeText={setNewPassword}
-                                    secureTextEntry
-                                />
-                            </View>
-
-                            <Text style={styles.inputLabel}>Confirm New Password</Text>
-                            <View style={styles.inputContainer}>
-                                <MaterialCommunityIcons name="lock-check-outline" size={20} color="#6B7280" />
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Confirm password"
-                                    value={confirmPassword}
-                                    onChangeText={setConfirmPassword}
-                                    secureTextEntry
-                                />
-                            </View>
-
-                            <TouchableOpacity
-                                style={styles.updateButton}
-                                onPress={handleChangePassword}
-                                disabled={passwordUpdating}
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={styles.modalOverlay}
+                >
+                    <View style={styles.premiumModalSheet}>
+                        <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
+                            <LinearGradient
+                                colors={['#F59E0B', '#D97706']}
+                                style={styles.modalHeaderGradient}
                             >
-                                <LinearGradient
-                                    colors={['#F59E0B', '#D97706']}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 0 }}
-                                    style={styles.updateGradient}
+                                <View style={styles.modalTitleBox}>
+                                    <Text style={styles.modalTitlePremium}>Security Shield</Text>
+                                    <Text style={styles.modalSubTitlePremium}>Change your access password</Text>
+                                </View>
+                                <TouchableOpacity
+                                    style={styles.modalCloseButton}
+                                    onPress={() => setIsChangingPassword(false)}
                                 >
-                                    {passwordUpdating ? (
-                                        <ActivityIndicator color="#fff" size="small" />
-                                    ) : (
-                                        <>
-                                            <MaterialCommunityIcons name="shield-key-outline" size={20} color="#fff" />
-                                            <Text style={styles.updateButtonText}>Update Password</Text>
-                                        </>
-                                    )}
-                                </LinearGradient>
-                            </TouchableOpacity>
-                        </View>
+                                    <MaterialCommunityIcons name="close" size={20} color="#fff" />
+                                </TouchableOpacity>
+                            </LinearGradient>
+
+                            <View style={styles.modalBodyFields}>
+                                <Text style={styles.premiumFieldLabel}>New Security Code</Text>
+                                <View style={styles.premiumInputContainer}>
+                                    <MaterialCommunityIcons name="lock-outline" size={20} color="#F59E0B" />
+                                    <TextInput
+                                        style={styles.premiumTextInput}
+                                        placeholder="Min 6 characters"
+                                        placeholderTextColor="#94A3B8"
+                                        value={newPassword}
+                                        onChangeText={setNewPassword}
+                                        secureTextEntry
+                                    />
+                                </View>
+
+                                <Text style={styles.premiumFieldLabel}>Verification Code</Text>
+                                <View style={styles.premiumInputContainer}>
+                                    <MaterialCommunityIcons name="lock-check-outline" size={20} color="#F59E0B" />
+                                    <TextInput
+                                        style={styles.premiumTextInput}
+                                        placeholder="Confirm new password"
+                                        placeholderTextColor="#94A3B8"
+                                        value={confirmPassword}
+                                        onChangeText={setConfirmPassword}
+                                        secureTextEntry
+                                    />
+                                </View>
+
+                                <TouchableOpacity
+                                    style={styles.premiumPrimaryButton}
+                                    onPress={handleChangePassword}
+                                    disabled={passwordUpdating}
+                                >
+                                    <LinearGradient
+                                        colors={['#F59E0B', '#D97706']}
+                                        style={styles.buttonGradientInner}
+                                    >
+                                        {passwordUpdating ? (
+                                            <ActivityIndicator color="#fff" size="small" />
+                                        ) : (
+                                            <>
+                                                <MaterialCommunityIcons name="shield-lock-outline" size={20} color="#fff" />
+                                                <Text style={styles.primaryButtonText}>Solidify Password</Text>
+                                            </>
+                                        )}
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                            </View>
+                        </ScrollView>
                     </View>
-                </View>
+                </KeyboardAvoidingView>
             </Modal>
         </View>
     );
@@ -405,7 +487,7 @@ export default function Profile({ navigation }) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#F8FAFC',
     },
     scrollView: {
         flex: 1,
@@ -413,247 +495,363 @@ const styles = StyleSheet.create({
     scrollContent: {
         paddingBottom: 40,
     },
-    header: {
-        paddingTop: Platform.OS === 'ios' ? 45 : 25,
-        paddingBottom: 18,
-        paddingHorizontal: 20,
+    premiumHeaderBox: {
+        width: '100%',
     },
-    headerContent: {
+    premiumHeaderGradient: {
+        paddingTop: Platform.OS === 'ios' ? 45 : 25,
+        paddingBottom: 10,
+        borderBottomLeftRadius: 30,
+        borderBottomRightRadius: 30,
+    },
+    headerTopBar: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 6,
-    },
-    backButton: {
-        padding: 4,
-    },
-    headerTitle: {
-        fontSize: 15,
-        fontWeight: '800',
-        color: '#fff',
-    },
-    avatarContainer: {
-        position: 'relative',
-    },
-    profileInfoContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 4,
-    },
-    userInfo: {
-        marginLeft: 30,
-    },
-    avatar: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: 'rgba(255, 255, 255, 0.3)',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 2,
-        borderColor: '#fff',
-    },
-    avatarText: {
-        fontSize: 22,
-        fontWeight: '800',
-        color: '#fff',
-    },
-    verifiedBadge: {
-        position: 'absolute',
-        bottom: -2,
-        right: -2,
-        backgroundColor: '#fff',
-        borderRadius: 10,
-        padding: 1,
-    },
-    userName: {
-        fontSize: 17,
-        fontWeight: '800',
-        color: '#fff',
+        paddingHorizontal: 20,
         marginBottom: 2,
     },
-    userEmail: {
-        fontSize: 12,
-        color: 'rgba(255, 255, 255, 0.8)',
+    premiumBackButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 14,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
-    section: {
-        marginTop: 24,
+    premiumHeaderTitle: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#fff',
+        letterSpacing: -0.5,
+    },
+    heroProfileSection: {
+        alignItems: 'center',
         paddingHorizontal: 20,
     },
-    sectionTitle: {
-        fontSize: 16,
+    premiumAvatarContainer: {
+        position: 'relative',
+        marginBottom: 8,
+    },
+    avatarRing: {
+        width: 65,
+        height: 65,
+        borderRadius: 22,
+        padding: 2,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    avatarInner: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 20,
+        backgroundColor: '#fff',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    avatarInitialText: {
+        fontSize: 26,
+        fontWeight: '900',
+        color: '#4F46E5',
+    },
+    activeStatusBadge: {
+        position: 'absolute',
+        bottom: 5,
+        right: 5,
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: '#10B981',
+        borderWidth: 4,
+        borderColor: '#fff',
+    },
+    heroNameGroup: {
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    heroNameText: {
+        fontSize: 20,
+        fontWeight: '900',
+        color: '#fff',
+        marginBottom: 2,
+        letterSpacing: -0.5,
+    },
+    roleBadgePremium: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        paddingHorizontal: 12,
+        paddingVertical: 4,
+        borderRadius: 12,
+        gap: 6,
+    },
+    roleTextPremium: {
+        color: '#fff',
+        fontSize: 11,
+        fontWeight: '800',
+        letterSpacing: 1,
+    },
+    premiumEditFab: {
+        borderRadius: 20,
+        overflow: 'hidden',
+    },
+    glassButtonInner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 6,
+        gap: 6,
+    },
+    glassButtonText: {
+        color: '#fff',
+        fontSize: 14,
         fontWeight: '700',
-        color: '#6B7280',
+    },
+    contentSection: {
+        paddingHorizontal: 24,
+        marginTop: -20,
+    },
+    sectionHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 16,
+        paddingHorizontal: 4,
+    },
+    premiumSectionTitle: {
+        fontSize: 12,
+        fontWeight: '900',
+        color: '#1E293B',
+        letterSpacing: 1.5,
+        textTransform: 'uppercase',
+    },
+    premiumOptionCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+        padding: 16,
+        borderRadius: 24,
         marginBottom: 12,
+        shadowColor: '#64748B',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 12,
+        elevation: 2,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+    },
+    optionIconBox: {
+        width: 48,
+        height: 48,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 16,
+    },
+    optionInfoBox: {
+        flex: 1,
+    },
+    optionLabelText: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: '#94A3B8',
+        marginBottom: 2,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
-    optionCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#fff',
-        padding: 16,
-        borderRadius: 16,
-        marginBottom: 10,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    optionIcon: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    optionContent: {
-        flex: 1,
-        marginLeft: 12,
-    },
-    optionTitle: {
-        fontSize: 13,
-        color: '#6B7280',
-        marginBottom: 4,
-    },
-    optionValue: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#111827',
-    },
-    actionCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#fff',
-        padding: 16,
-        borderRadius: 16,
-        marginBottom: 10,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    actionIcon: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 12,
-    },
-    actionTitle: {
-        flex: 1,
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#111827',
-    },
-    versionContainer: {
-        alignItems: 'center',
-        marginTop: 32,
-        marginBottom: 24,
-    },
-    versionText: {
-        fontSize: 13,
-        color: '#9CA3AF',
-        fontWeight: '600',
-    },
-    versionSubtext: {
-        fontSize: 12,
-        color: '#D1D5DB',
-        marginTop: 4,
-    },
-    logoutText: {
+    optionValueText: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#fff',
+        color: '#1E293B',
     },
-    editProfileButton: {
+    premiumActionCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
-        marginTop: 6,
-        alignSelf: 'flex-start',
+        backgroundColor: '#fff',
+        padding: 16,
+        borderRadius: 22,
+        marginBottom: 10,
+        shadowColor: '#64748B',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 10,
+        elevation: 1,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
     },
-    editProfileText: {
-        color: '#fff',
-        fontSize: 11,
+    actionIconBox: {
+        width: 44,
+        height: 44,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 16,
+    },
+    actionLabelText: {
+        flex: 1,
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#1E293B',
+    },
+    premiumSignOutCard: {
+        marginTop: 30,
+        borderRadius: 24,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: '#FEE2E2',
+    },
+    signOutInner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+    },
+    signOutIconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 16,
+        backgroundColor: '#FEE2E2',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 16,
+    },
+    signOutTextMain: {
+        flex: 1,
+        fontSize: 16,
+        fontWeight: '800',
+        color: '#EF4444',
+    },
+    premiumFooter: {
+        alignItems: 'center',
+        marginTop: 40,
+        marginBottom: 20,
+        paddingHorizontal: 40,
+    },
+    footerAppTitle: {
+        fontSize: 14,
+        fontWeight: '900',
+        color: '#1E293B',
+        letterSpacing: 1,
+        marginBottom: 4,
+    },
+    footerVersionText: {
+        fontSize: 12,
+        color: '#94A3B8',
         fontWeight: '600',
-        marginLeft: 4,
+        marginBottom: 12,
+    },
+    footerDivider: {
+        width: 40,
+        height: 3,
+        backgroundColor: '#E2E8F0',
+        borderRadius: 2,
+        marginBottom: 12,
+    },
+    footerLegalText: {
+        fontSize: 10,
+        color: '#CBD5E1',
+        textAlign: 'center',
+        lineHeight: 16,
+        fontWeight: '600',
     },
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center',
-        padding: 20,
+        backgroundColor: 'rgba(15, 23, 42, 0.6)',
+        justifyContent: 'flex-start',
+        paddingHorizontal: 20,
+        paddingTop: Platform.OS === 'ios' ? 80 : 50,
     },
-    modalContent: {
+    premiumModalSheet: {
         backgroundColor: '#fff',
-        borderRadius: 24,
+        borderRadius: 30,
         overflow: 'hidden',
-        elevation: 5,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 10,
+        maxHeight: '90%',
     },
-    modalHeader: {
+    modalHeaderGradient: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
+        padding: 24,
+        paddingTop: 30,
     },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#111827',
+    modalTitleBox: {
+        flex: 1,
     },
-    modalBody: {
-        padding: 20,
+    modalTitlePremium: {
+        fontSize: 22,
+        fontWeight: '900',
+        color: '#fff',
+        letterSpacing: -0.5,
     },
-    inputLabel: {
-        fontSize: 14,
+    modalSubTitlePremium: {
+        fontSize: 13,
+        color: 'rgba(255,255,255,0.8)',
         fontWeight: '600',
-        color: '#374151',
-        marginBottom: 8,
+        marginTop: 2,
     },
-    inputContainer: {
+    modalCloseButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 12,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    modalBodyFields: {
+        padding: 24,
+    },
+    premiumFieldLabel: {
+        fontSize: 11,
+        fontWeight: '900',
+        color: '#1E293B',
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+        marginBottom: 10,
+        marginLeft: 4,
+    },
+    premiumInputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#F8FAFC',
         borderWidth: 1,
-        borderColor: '#E5E7EB',
-        borderRadius: 12,
-        paddingHorizontal: 12,
-        height: 48,
-        marginBottom: 20,
+        borderColor: '#E2E8F0',
+        borderRadius: 18,
+        paddingHorizontal: 16,
+        height: 56,
+        marginBottom: 24,
     },
-    input: {
+    premiumTextInput: {
         flex: 1,
-        marginLeft: 10,
+        marginLeft: 12,
         fontSize: 16,
-        color: '#111827',
+        color: '#1E293B',
+        fontWeight: '700',
     },
-    updateButton: {
-        borderRadius: 12,
+    premiumPrimaryButton: {
+        borderRadius: 20,
         overflow: 'hidden',
+        shadowColor: '#4F46E5',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.25,
+        shadowRadius: 12,
+        elevation: 8,
     },
-    updateGradient: {
+    buttonGradientInner: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        height: 48,
-        gap: 8,
+        height: 56,
+        gap: 10,
     },
-    updateButtonText: {
+    primaryButtonText: {
         color: '#fff',
         fontSize: 16,
-        fontWeight: '700',
+        fontWeight: '800',
+        letterSpacing: 0.5,
     },
 });
+

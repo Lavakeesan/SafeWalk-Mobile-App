@@ -533,7 +533,7 @@ export default function AdminOverview({ navigation }) {
                         onPress={loadTrustedContacts}
                     >
                         <MaterialCommunityIcons name="shield-account" size={24} color="#94A3B8" />
-                        <Text style={styles.premiumNavText}>Privacy</Text>
+                        <Text style={styles.premiumNavText}>Contacts</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -988,7 +988,7 @@ export default function AdminOverview({ navigation }) {
                                         style={styles.signOutGradientFull}
                                     >
                                         <MaterialCommunityIcons name="logout-variant" size={20} color="#fff" />
-                                        <Text style={styles.signOutTextPremium}>TERMINATE SESSION</Text>
+                                        <Text style={styles.signOutTextPremium}>SIGN OUT</Text>
                                     </LinearGradient>
                                 </TouchableOpacity>
 
@@ -1137,7 +1137,7 @@ const styles = StyleSheet.create({
     statTitle: {
         fontSize: 11,
         fontWeight: '800',
-        color: '#94A3B8',
+        color: '#1E293B',
         letterSpacing: 0.5,
         marginBottom: 4,
     },
@@ -1240,17 +1240,17 @@ const styles = StyleSheet.create({
     },
     activityTimePremium: {
         fontSize: 11,
-        color: '#94A3B8',
+        color: '#1E293B',
         fontWeight: '500',
     },
     activityActionPremium: {
         fontSize: 13,
-        color: '#64748B',
+        color: '#1E293B',
         marginBottom: 2,
     },
     activityEmailPremium: {
         fontSize: 11,
-        color: '#94A3B8',
+        color: '#1E293B',
     },
     activityItem: {
         flexDirection: 'row',
@@ -1278,11 +1278,11 @@ const styles = StyleSheet.create({
     },
     activityAction: {
         fontSize: 13,
-        color: '#6B7280',
+        color: '#111827',
     },
     activityEmail: {
         fontSize: 11,
-        color: '#9CA3AF',
+        color: '#111827',
         marginTop: 2,
     },
     activityTime: {
@@ -1290,7 +1290,7 @@ const styles = StyleSheet.create({
     },
     activityTimeText: {
         fontSize: 12,
-        color: '#9CA3AF',
+        color: '#111827',
         marginBottom: 4,
     },
     activityDot: {
@@ -1328,7 +1328,7 @@ const styles = StyleSheet.create({
     premiumNavText: {
         fontSize: 10,
         fontWeight: '700',
-        color: '#94A3B8',
+        color: '#1E293B',
         marginTop: 4,
     },
     premiumNavTextActive: {
@@ -1427,12 +1427,12 @@ const styles = StyleSheet.create({
     },
     modalUserEmail: {
         fontSize: 13,
-        color: '#6B7280',
+        color: '#111827',
         marginBottom: 2,
     },
     modalUserTime: {
         fontSize: 11,
-        color: '#9CA3AF',
+        color: '#111827',
     },
     emptyState: {
         alignItems: 'center',
@@ -2349,7 +2349,7 @@ const styles = StyleSheet.create({
     },
     searchResultEmail: {
         fontSize: 13,
-        color: '#6B7280',
+        color: '#111827',
         marginBottom: 2,
     },
     searchResultPhone: {
@@ -2372,6 +2372,7 @@ const styles = StyleSheet.create({
     premiumNotificationModal: {
         backgroundColor: '#fff',
         borderRadius: 30,
+        width: '100%',
         height: '85%',
         overflow: 'hidden',
         shadowColor: '#4F46E5',
@@ -2422,7 +2423,7 @@ const styles = StyleSheet.create({
     },
     notificationCardEmail: {
         fontSize: 13,
-        color: '#64748B',
+        color: '#1E293B',
         marginBottom: 4,
     },
     notificationCardTimeBox: {
@@ -2433,7 +2434,7 @@ const styles = StyleSheet.create({
     notificationCardTime: {
         fontSize: 11,
         fontWeight: '600',
-        color: '#94A3B8',
+        color: '#1E293B',
     },
     noSignupsContainer: {
         flex: 1,
@@ -2458,7 +2459,7 @@ const styles = StyleSheet.create({
     },
     noSignupsTextSub: {
         fontSize: 14,
-        color: '#94A3B8',
+        color: '#1E293B',
         textAlign: 'center',
     },
 });

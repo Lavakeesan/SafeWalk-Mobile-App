@@ -564,7 +564,7 @@ const styles = StyleSheet.create({
     filterButtonText: {
         fontSize: 13,
         fontWeight: '700',
-        color: '#64748B',
+        color: '#1E293B',
     },
     filterButtonTextActive: {
         color: '#fff',
@@ -645,7 +645,7 @@ const styles = StyleSheet.create({
     },
     premiumUserEmail: {
         fontSize: 13,
-        color: '#64748B',
+        color: '#1E293B',
         marginBottom: 8,
     },
     premiumUserMetaRow: {
@@ -667,7 +667,7 @@ const styles = StyleSheet.create({
     premiumMetaText: {
         fontSize: 11,
         fontWeight: '600',
-        color: '#94A3B8',
+        color: '#1E293B',
     },
     userActionArea: {
         marginLeft: 12,

@@ -185,19 +185,32 @@ export function AuthProvider({ children }) {
     /**
      * Update user profile information
      * @param {string} fullName - New full name
+     * @param {string} email - New email address
+     * @param {string} phone - New phone number
      */
-    const updateUser = async (fullName) => {
+    const updateUser = async (fullName, email, phone) => {
         try {
             if (!auth.currentUser) throw new Error('No user logged in');
 
             setLoading(true);
-            // Update Auth profile
-            await updateProfile(auth.currentUser, { displayName: fullName });
 
-            // Update Firestore document
-            await setDoc(doc(db, 'users', auth.currentUser.uid), {
-                fullName: fullName
-            }, { merge: true });
+            // 1. Update Profile Display Name
+            if (fullName) {
+                await updateProfile(auth.currentUser, { displayName: fullName });
+            }
+
+            // 2. Update Firestore document (Phone, Email, and Full Name)
+            const updateData = {
+                fullName: fullName,
+                username: fullName, // dashboard compatibility
+                email: email,
+                phone: phone
+            };
+
+            // Remove undefined fields
+            Object.keys(updateData).forEach(key => updateData[key] === undefined && delete updateData[key]);
+
+            await setDoc(doc(db, 'users', auth.currentUser.uid), updateData, { merge: true });
 
             setLoading(false);
             return { success: true };
