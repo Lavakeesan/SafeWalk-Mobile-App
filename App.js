@@ -11,6 +11,10 @@ import { WalkProvider } from './context/WalkContext';
 import SignIn from './screens/SignIn';
 import Register from './screens/Register';
 import History from './screens/History';
+import AdminOverview from './screens/admin/AdminOverview';
+import UserManagement from './screens/admin/UserManagement';
+import EditUser from './screens/admin/EditUser';
+import AddUser from './screens/admin/AddUser';
 
 const Stack = createNativeStackNavigator();
 
@@ -28,6 +32,10 @@ export default function App() {
               <Stack.Screen name="Observer" component={Observer} />
               <Stack.Screen name="Profile" component={Profile} />
               <Stack.Screen name="History" component={History} />
+              <Stack.Screen name="AdminOverview" component={AdminOverview} />
+              <Stack.Screen name="UserManagement" component={UserManagement} />
+              <Stack.Screen name="EditUser" component={EditUser} />
+              <Stack.Screen name="AddUser" component={AddUser} />
             </Stack.Navigator>
           </NavigationContainer>
         </WalkProvider>

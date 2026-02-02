@@ -11,6 +11,7 @@ import {
   StyleSheet,
   Dimensions,
   StatusBar,
+  Keyboard,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -27,6 +28,8 @@ export default function Register({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
+
+
 
   const handleRegister = async () => {
     // Validation
@@ -45,14 +48,32 @@ export default function Register({ navigation }) {
       return;
     }
 
+    Keyboard.dismiss(); // Dismiss keyboard before operation
     setLoading(true);
+    console.log('Starting registration for', email);
+
     const result = await register(email.trim(), password, fullName.trim());
+    console.log('Registration result:', result);
+
     setLoading(false);
 
     if (result.success) {
-      Alert.alert('Success', 'Account created successfully!', [
-        { text: 'OK', onPress: () => navigation.navigate('SignIn') }
-      ]);
+      // Small delay to ensure UI updates finish
+      setTimeout(() => {
+        Alert.alert(
+          'Success',
+          'Account created successfully! Welcome to SafeWalk.',
+          [
+            {
+              text: 'Start safe walking',
+              onPress: () => {
+                console.log('Navigating to Dashboard');
+                navigation.navigate('Dashboard');
+              }
+            }
+          ]
+        );
+      }, 100);
     } else {
       Alert.alert('Registration Failed', result.error || 'Please try again');
     }

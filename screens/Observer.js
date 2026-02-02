@@ -68,87 +68,6 @@ export default function Observer({ navigation, route }) {
     locationsRef.current = locations;
   }, [locations]);
 
-  // Refs for stable callbacks
-  const processNewLocationRef = useRef(null);
-  const performEmergencyActionRef = useRef(null);
-
-  useEffect(() => {
-    processNewLocationRef.current = processNewLocation;
-    performEmergencyActionRef.current = performEmergencyAction;
-  }, [processNewLocation, performEmergencyAction]);
-  useEffect(() => {
-    (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      setPermission(status);
-      if (status !== 'granted') return;
-
-      const sub = await Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.Balanced, timeInterval: UPDATE_MS, distanceInterval: 3 },
-        (loc) => {
-          const newLoc = {
-            lat: loc.coords.latitude,
-            lng: loc.coords.longitude,
-            speed: loc.coords.speed ?? 0,
-            accuracy: loc.coords.accuracy,
-            ts: Date.now(),
-          };
-          // Wrap in timeout to ensure update happens outside the sync watch cycle
-          setTimeout(() => {
-            processNewLocationRef.current(newLoc);
-            setAlert('connLost', 'Connection lost.', false);
-          }, 0);
-        }
-      );
-      watchRef.current = sub;
-    })();
-
-    return () => {
-      if (watchRef.current) watchRef.current.remove();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (session && !observingStarted) {
-      setObservingStarted(true);
-    }
-  }, [session, observingStarted]);
-
-  useEffect(() => {
-    if (observingStarted) return;
-    if (session || contactParam) {
-      startSimulatedWalk();
-    }
-  }, [session, contactParam, observingStarted]);
-
-  // Duration timer
-  useEffect(() => {
-    if (observingStarted) {
-      durationIntervalRef.current = setInterval(() => {
-        if (session?.startedAt) {
-          const elapsed = Math.floor((Date.now() - session.startedAt) / 1000);
-          setDuration(elapsed > 0 ? elapsed : 0);
-        } else {
-          setDuration((prev) => prev + 1);
-        }
-      }, 1000);
-    }
-    return () => {
-      if (durationIntervalRef.current) {
-        clearInterval(durationIntervalRef.current);
-      }
-    };
-  }, [observingStarted]);
-
-  // Stop simulation if real GPS is detected
-  useEffect(() => {
-    const lastLoc = locations[locations.length - 1];
-    if (lastLoc && !lastLoc.isSim && simIntervalRef.current) {
-      console.log('Real GPS detected in history, stopping simulation');
-      clearInterval(simIntervalRef.current);
-      simIntervalRef.current = null;
-    }
-  }, [locations]);
-
   // Process new location with drift filtering and auto-center
   const processNewLocation = useCallback((newLoc) => {
     // 1. Update No-Movement Tracker (Always check even if point is 'drift')
@@ -194,24 +113,6 @@ export default function Observer({ navigation, route }) {
     setLocationsRef.current = (cb) => cb(locations);
   }, [locations]);
 
-  // No Movement Detection Timer (Checks every 2 seconds)
-  useEffect(() => {
-    if (!observingStarted) return;
-
-    const safetyCheckInterval = setInterval(() => {
-      if (showSafetyModal) return;
-
-      const now = Date.now();
-      const stayDuration = now - lastMoveTimeRef.current;
-
-      if (stayDuration > NO_MOVE_WINDOW_MS) {
-        triggerSafetyCheck();
-      }
-    }, 2000);
-
-    return () => clearInterval(safetyCheckInterval);
-  }, [observingStarted, showSafetyModal, triggerSafetyCheck]);
-
   const performEmergencyAction = useCallback(async () => {
     if (helpSent) return; // Prevent duplicate sends
 
@@ -255,7 +156,7 @@ View: https://www.google.com/maps?q=${current.lat},${current.lng}`;
     } catch (error) {
       console.log('Auto SOS failed', error);
     }
-  }, [session?.contact?.phone, contactParam?.phone, setAlert]);
+  }, [session?.contact?.phone, contactParam?.phone, setAlert, helpSent]);
 
   const autoSendEmergency = useCallback(async () => {
     setShowSafetyModal(false);
@@ -293,6 +194,113 @@ View: https://www.google.com/maps?q=${current.lat},${current.lng}`;
       performEmergencyAction();
     }
   }, [setAlert, performEmergencyAction]);
+
+  // Refs for stable callbacks
+  const processNewLocationRef = useRef(null);
+  const performEmergencyActionRef = useRef(null);
+
+  useEffect(() => {
+    processNewLocationRef.current = processNewLocation;
+    performEmergencyActionRef.current = performEmergencyAction;
+  }, [processNewLocation, performEmergencyAction]);
+  useEffect(() => {
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      setPermission(status);
+      if (status !== 'granted') return;
+
+      const sub = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.Balanced, timeInterval: UPDATE_MS, distanceInterval: 3 },
+        (loc) => {
+          const newLoc = {
+            lat: loc.coords.latitude,
+            lng: loc.coords.longitude,
+            speed: loc.coords.speed ?? 0,
+            accuracy: loc.coords.accuracy,
+            ts: Date.now(),
+          };
+          // Wrap in timeout to ensure update happens outside the sync watch cycle
+          setTimeout(() => {
+            processNewLocationRef.current(newLoc);
+            setAlert('connLost', 'Connection lost.', false);
+          }, 0);
+        }
+      );
+      watchRef.current = sub;
+    })();
+
+    return () => {
+      if (watchRef.current && typeof watchRef.current.remove === 'function') {
+        watchRef.current.remove();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (session && !observingStarted) {
+      setObservingStarted(true);
+    }
+  }, [session, observingStarted]);
+
+  useEffect(() => {
+    if (observingStarted) return;
+    if (session || contactParam) {
+      startSimulatedWalk();
+    }
+  }, [session, contactParam, observingStarted]);
+
+  // Duration timer
+  useEffect(() => {
+    if (observingStarted) {
+      durationIntervalRef.current = setInterval(() => {
+        if (session?.startedAt) {
+          const elapsed = Math.floor((Date.now() - session.startedAt) / 1000);
+          setDuration(elapsed > 0 ? elapsed : 0);
+        } else {
+          setDuration((prev) => prev + 1);
+        }
+      }, 1000);
+    }
+    return () => {
+      if (durationIntervalRef.current) {
+        clearInterval(durationIntervalRef.current);
+      }
+    };
+  }, [observingStarted]);
+
+  // Stop simulation if real GPS is detected
+  useEffect(() => {
+    const lastLoc = locations[locations.length - 1];
+    if (lastLoc && !lastLoc.isSim && simIntervalRef.current) {
+      console.log('Real GPS detected in history, stopping simulation');
+      clearInterval(simIntervalRef.current);
+      simIntervalRef.current = null;
+    }
+  }, [locations]);
+
+
+
+
+
+  // No Movement Detection Timer (Checks every 2 seconds)
+  useEffect(() => {
+    if (!observingStarted) return;
+
+    const safetyCheckInterval = setInterval(() => {
+      if (showSafetyModal) return;
+
+      const now = Date.now();
+      const stayDuration = now - lastMoveTimeRef.current;
+
+      if (stayDuration > NO_MOVE_WINDOW_MS) {
+        triggerSafetyCheck();
+      }
+    }, 2000);
+
+    return () => clearInterval(safetyCheckInterval);
+  }, [observingStarted, showSafetyModal, triggerSafetyCheck]);
+
+
 
   async function startSimulatedWalk() {
     // On native, we prefer real GPS. Only start simulation if no real signal received yet

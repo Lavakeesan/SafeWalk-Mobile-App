@@ -42,7 +42,7 @@ export function AuthProvider({ children }) {
                             ...prev,
                             uid: firebaseUser.uid,
                             email: firebaseUser.email,
-                            displayName: userData.fullName || firebaseUser.displayName || '',
+                            displayName: userData.fullName || userData.username || firebaseUser.displayName || '',
                             ...userData
                         }));
                     }
@@ -82,7 +82,7 @@ export function AuthProvider({ children }) {
             setLoading(true);
 
             // Create user account
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const userCredential = await createUserWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
             const { user: firebaseUser } = userCredential;
 
             // Update user profile with display name
@@ -93,17 +93,19 @@ export function AuthProvider({ children }) {
             // Create user document in Firestore
             await setDoc(doc(db, 'users', firebaseUser.uid), {
                 fullName,
+                username: fullName, // Add this for dashboard compatibility
                 email,
+                role: 'user',
                 createdAt: new Date().toISOString()
             });
 
             setLoading(false);
-            return { success: true };
+            return { success: true, user: { uid: firebaseUser.uid, email, fullName, role: 'user' } };
         } catch (err) {
             setLoading(false);
             console.error('Registration Error:', err.code, err.message);
             let errorMessage = err.message;
-            
+
             // Provide user-friendly error messages
             if (err.code === 'auth/email-already-in-use') {
                 errorMessage = 'This email is already registered. Please sign in instead.';
@@ -114,7 +116,7 @@ export function AuthProvider({ children }) {
             } else if (err.code === 'auth/operation-not-allowed') {
                 errorMessage = 'Email/Password authentication is not enabled. Please contact support.';
             }
-            
+
             setError(errorMessage);
             return { success: false, error: errorMessage };
         }
@@ -129,14 +131,21 @@ export function AuthProvider({ children }) {
         try {
             setError(null);
             setLoading(true);
-            await signInWithEmailAndPassword(auth, email, password);
+            const userCredential = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+            const userUID = userCredential.user.uid;
+            console.log('Login success - UID:', userUID);
+
+            const userDoc = await getDoc(doc(db, 'users', userUID));
+            const userData = userDoc.exists() ? userDoc.data() : null;
+            console.log('Firestore userData:', userData);
+
             setLoading(false);
-            return { success: true };
+            return { success: true, user: { uid: userUID, ...userData } };
         } catch (err) {
             setLoading(false);
             console.error('Login Error:', err.code, err.message);
             let errorMessage = err.message;
-            
+
             // Provide user-friendly error messages
             if (err.code === 'auth/user-not-found') {
                 errorMessage = 'No account found with this email. Please register first.';
@@ -149,7 +158,7 @@ export function AuthProvider({ children }) {
             } else if (err.code === 'auth/operation-not-allowed') {
                 errorMessage = 'Email/Password authentication is not enabled. Please contact support.';
             }
-            
+
             setError(errorMessage);
             return { success: false, error: errorMessage };
         }
