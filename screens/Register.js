@@ -12,6 +12,7 @@ import {
   Dimensions,
   StatusBar,
   Keyboard,
+  Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -23,11 +24,13 @@ export default function Register({ navigation }) {
   const { register } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
 
 
@@ -52,28 +55,13 @@ export default function Register({ navigation }) {
     setLoading(true);
     console.log('Starting registration for', email);
 
-    const result = await register(email.trim(), password, fullName.trim());
+    const result = await register(email.trim(), password, fullName.trim(), phone.trim());
     console.log('Registration result:', result);
 
     setLoading(false);
 
     if (result.success) {
-      // Small delay to ensure UI updates finish
-      setTimeout(() => {
-        Alert.alert(
-          'Success',
-          'Account created successfully! Welcome to SafeWalk.',
-          [
-            {
-              text: 'Start safe walking',
-              onPress: () => {
-                console.log('Navigating to Dashboard');
-                navigation.navigate('Dashboard');
-              }
-            }
-          ]
-        );
-      }, 100);
+      setShowSuccessModal(true);
     } else {
       Alert.alert('Registration Failed', result.error || 'Please try again');
     }
@@ -149,6 +137,22 @@ export default function Register({ navigation }) {
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="email"
+            />
+          </View>
+
+          {/* Phone Number Input */}
+          <View style={styles.inputWrapper}>
+            <View style={styles.inputIconContainer}>
+              <MaterialCommunityIcons name="phone-outline" size={20} color="#6B7280" />
+            </View>
+            <TextInput
+              style={styles.input}
+              placeholder="Phone Number"
+              placeholderTextColor="#9CA3AF"
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+              autoComplete="tel"
             />
           </View>
 
@@ -274,6 +278,47 @@ export default function Register({ navigation }) {
           </View>
         </View>
       </ScrollView>
+
+      {/* Success Modal */}
+      <Modal
+        visible={showSuccessModal}
+        transparent={true}
+        animationType="fade"
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <LinearGradient
+              colors={['#10B981', '#059669']}
+              style={styles.successIconBadge}
+            >
+              <MaterialCommunityIcons name="check-bold" size={40} color="#fff" />
+            </LinearGradient>
+
+            <Text style={styles.successTitle}>Account Created!</Text>
+            <Text style={styles.successMessage}>
+              Welcome to SafeWalk. Your account has been successfully set up and you're ready to start walking safely.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.successButton}
+              onPress={() => {
+                setShowSuccessModal(false);
+                navigation.navigate('Dashboard');
+              }}
+            >
+              <LinearGradient
+                colors={['#10B981', '#059669']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.successButtonGradient}
+              >
+                <Text style={styles.successButtonText}>LET'S GO</Text>
+                <MaterialCommunityIcons name="arrow-right" size={20} color="#fff" />
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -463,5 +508,69 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#10B981',
     fontWeight: '700',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    width: '100%',
+    maxWidth: 340,
+    borderRadius: 30,
+    padding: 30,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 15,
+    elevation: 10,
+  },
+  successIconBadge: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#111827',
+    marginBottom: 10,
+  },
+  successMessage: {
+    fontSize: 15,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 30,
+  },
+  successButton: {
+    width: '100%',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  successButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 10,
+  },
+  successButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
 });

@@ -70,13 +70,7 @@ export function AuthProvider({ children }) {
         };
     }, []);
 
-    /**
-     * Register a new user
-     * @param {string} email - User's email
-     * @param {string} password - User's password
-     * @param {string} fullName - User's full name
-     */
-    const register = async (email, password, fullName) => {
+    const register = async (email, password, fullName, phone = '') => {
         try {
             setError(null);
             setLoading(true);
@@ -95,6 +89,7 @@ export function AuthProvider({ children }) {
                 fullName,
                 username: fullName, // Add this for dashboard compatibility
                 email,
+                phone, // Save the phone number
                 role: 'user',
                 createdAt: new Date().toISOString()
             });
@@ -151,6 +146,8 @@ export function AuthProvider({ children }) {
                 errorMessage = 'No account found with this email. Please register first.';
             } else if (err.code === 'auth/wrong-password') {
                 errorMessage = 'Incorrect password. Please try again.';
+            } else if (err.code === 'auth/invalid-credential') {
+                errorMessage = 'Incorrect email or password. Please try again.';
             } else if (err.code === 'auth/invalid-email') {
                 errorMessage = 'Invalid email address format.';
             } else if (err.code === 'auth/user-disabled') {

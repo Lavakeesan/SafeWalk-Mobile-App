@@ -44,18 +44,28 @@ export default function SignIn({ navigation }) {
 
     if (result.success) {
       console.log('Login Successful!');
-      console.log('User Data:', result.user);
-      console.log('User Role:', result.user?.role);
-
       if (result.user && result.user.role === 'admin') {
-        console.log('Redirecting to Admin Dashboard...');
         navigation.navigate('AdminOverview');
       } else {
-        console.log('Redirecting to User Dashboard...');
         navigation.navigate('Dashboard');
       }
     } else {
-      Alert.alert('Sign In Failed', result.error || 'Please check your credentials');
+      let errorMessage = result.error || 'Please check your credentials';
+      let errorTitle = 'Sign In Failed';
+
+      if (result.error && result.error.includes('password')) {
+        errorTitle = 'Incorrect Password';
+        errorMessage = 'The password you entered is incorrect. Would you like to reset it?';
+      }
+
+      Alert.alert(errorTitle, errorMessage, [
+        { text: 'Try Again', style: 'default' },
+        {
+          text: 'Reset Password',
+          onPress: () => setShowForgotModal(true),
+          style: 'cancel'
+        }
+      ]);
     }
   };
 

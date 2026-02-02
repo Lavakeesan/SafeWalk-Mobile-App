@@ -10,6 +10,7 @@ import {
     Platform,
     Alert,
     Switch,
+    Dimensions,
     ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,6 +19,8 @@ import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { db, firebaseConfig } from '../../config/firebase';
+
+const { width } = Dimensions.get('window');
 
 export default function AddUser({ navigation }) {
     const [formData, setFormData] = useState({
@@ -30,7 +33,6 @@ export default function AddUser({ navigation }) {
     const [loading, setLoading] = useState(false);
 
     const handleSave = async () => {
-        // Validation
         if (!formData.fullName.trim()) {
             Alert.alert('Error', 'Please enter a name');
             return;
@@ -41,7 +43,6 @@ export default function AddUser({ navigation }) {
             return;
         }
 
-        // Basic email validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(formData.email)) {
             Alert.alert('Error', 'Please enter a valid email address');
@@ -56,12 +57,10 @@ export default function AddUser({ navigation }) {
         setLoading(true);
         let secondaryApp = null;
         try {
-            // 1. Initialize a secondary Firebase app to create the user without logging out the admin
             const secondaryAppName = `secondary-app-${Date.now()}`;
             secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
             const secondaryAuth = getAuth(secondaryApp);
 
-            // 2. Create the user in Firebase Authentication
             const userCredential = await createUserWithEmailAndPassword(
                 secondaryAuth,
                 formData.email.trim().toLowerCase(),
@@ -70,18 +69,19 @@ export default function AddUser({ navigation }) {
 
             const uid = userCredential.user.uid;
 
-            // 3. Create the user document in Firestore using the Auth UID
             const userData = {
                 username: formData.fullName.trim(),
+                name: formData.fullName.trim(),
                 email: formData.email.trim().toLowerCase(),
                 phone: formData.phone.trim(),
                 isActive: formData.status,
+                status: formData.status ? 'active' : 'suspended',
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
                 role: 'user',
-                trustedContacts: [],
-                walkSessions: [],
-                uid: uid, // Store the Auth UID in the document
+                trustedContactsCount: 0,
+                walkSessionsCount: 0,
+                uid: uid,
             };
 
             await setDoc(doc(db, 'users', uid), userData);
@@ -97,7 +97,6 @@ export default function AddUser({ navigation }) {
             }
             Alert.alert('Error', `Failed to add user: ${errorMessage}`);
         } finally {
-            // 4. Clean up the secondary app instance
             if (secondaryApp) {
                 await deleteApp(secondaryApp);
             }
@@ -107,145 +106,167 @@ export default function AddUser({ navigation }) {
 
     return (
         <View style={styles.container}>
-            <StatusBar barStyle="dark-content" />
+            <StatusBar barStyle="light-content" />
 
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={() => navigation.goBack()}
+            {/* Premium Header */}
+            <View style={styles.premiumHeaderBox}>
+                <LinearGradient
+                    colors={['#4F46E5', '#7C3AED']}
+                    style={styles.premiumHeaderGradient}
                 >
-                    <MaterialCommunityIcons name="arrow-left" size={24} color="#111827" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Add New User</Text>
+                    <View style={styles.headerLayout}>
+                        <TouchableOpacity
+                            style={styles.premiumBackButton}
+                            onPress={() => navigation.goBack()}
+                        >
+                            <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
+                        </TouchableOpacity>
+                        <View style={styles.headerTextLayer}>
+                            <Text style={styles.premiumHeaderTitle}>Add Member</Text>
+                            <Text style={styles.premiumHeaderSub}>System Registration Suite</Text>
+                        </View>
+                        {loading && (
+                            <View style={styles.headerLoadingBox}>
+                                <ActivityIndicator color="#fff" size="small" />
+                            </View>
+                        )}
+                    </View>
+                </LinearGradient>
             </View>
 
             <ScrollView
-                style={styles.content}
+                style={styles.mainScroll}
                 showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.scrollPadding}
             >
-                <View style={styles.infoBox}>
-                    <MaterialCommunityIcons name="information-outline" size={20} color="#6B7280" />
-                    <Text style={styles.infoText}>
-                        Creating a user here will create both a login account and a database profile. The user can log in immediately after creation.
-                    </Text>
-                </View>
-
-                {/* Profile Placeholder */}
-                <View style={styles.profileSection}>
-                    <View style={styles.avatarContainer}>
-                        <View style={styles.avatar}>
-                            <MaterialCommunityIcons name="account-plus" size={60} color="#6B7280" />
+                {/* Central Identity Card */}
+                <View style={styles.idCardSection}>
+                    <View style={styles.idAvatarOuter}>
+                        <LinearGradient
+                            colors={['#F8FAFC', '#F1F5F9']}
+                            style={styles.idAvatarInner}
+                        >
+                            <MaterialCommunityIcons name="account-plus-outline" size={42} color="#4F46E5" />
+                        </LinearGradient>
+                        <View style={styles.idEditBadge}>
+                            <MaterialCommunityIcons name="plus" size={14} color="#fff" />
                         </View>
                     </View>
-                    <Text style={styles.profileName}>New Member</Text>
+                    <Text style={styles.idCardMainLabel}>Member Identity</Text>
+                    <Text style={styles.idCardSubLabel}>Initialize secure credentials</Text>
                 </View>
 
-                {/* Form Section */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>ACCOUNT DETAILS</Text>
+                <View style={styles.creationFormBox}>
+                    <View style={styles.formSectionHeader}>
+                        <MaterialCommunityIcons name="card-account-details-outline" size={18} color="#94A3B8" />
+                        <Text style={styles.formSectionTitle}>PRIMARY DETAILS</Text>
+                    </View>
 
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Full Name</Text>
-                        <View style={styles.inputWrapper}>
+                    <View style={styles.premiumInputCard}>
+                        <Text style={styles.premiumInputLabel}>Full Name</Text>
+                        <View style={styles.premiumInputFieldWrapper}>
+                            <MaterialCommunityIcons name="account-circle-outline" size={20} color="#64748B" />
                             <TextInput
-                                style={styles.input}
+                                style={styles.premiumTextInputStyle}
                                 value={formData.fullName}
                                 onChangeText={(text) => setFormData({ ...formData, fullName: text })}
-                                placeholder="Enter full name"
-                                placeholderTextColor="#9CA3AF"
+                                placeholder="Enter member name"
+                                placeholderTextColor="#94A3B8"
                             />
                         </View>
                     </View>
 
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Email Address</Text>
-                        <View style={styles.inputWrapper}>
+                    <View style={styles.premiumInputCard}>
+                        <Text style={styles.premiumInputLabel}>Email Address</Text>
+                        <View style={styles.premiumInputFieldWrapper}>
+                            <MaterialCommunityIcons name="email-fast-outline" size={20} color="#64748B" />
                             <TextInput
-                                style={styles.input}
+                                style={styles.premiumTextInputStyle}
                                 value={formData.email}
                                 onChangeText={(text) => setFormData({ ...formData, email: text })}
-                                placeholder="Enter email address"
-                                placeholderTextColor="#9CA3AF"
+                                placeholder="member@domain.com"
+                                placeholderTextColor="#94A3B8"
                                 keyboardType="email-address"
                                 autoCapitalize="none"
                             />
                         </View>
                     </View>
 
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Phone Number</Text>
-                        <View style={styles.inputWrapper}>
+                    <View style={styles.premiumInputCard}>
+                        <Text style={styles.premiumInputLabel}>Mobile Contact</Text>
+                        <View style={styles.premiumInputFieldWrapper}>
+                            <MaterialCommunityIcons name="phone-settings-outline" size={20} color="#64748B" />
                             <TextInput
-                                style={styles.input}
+                                style={styles.premiumTextInputStyle}
                                 value={formData.phone}
                                 onChangeText={(text) => setFormData({ ...formData, phone: text })}
-                                placeholder="Enter phone number"
-                                placeholderTextColor="#9CA3AF"
+                                placeholder="+94 XX XXX XXXX"
+                                placeholderTextColor="#94A3B8"
                                 keyboardType="phone-pad"
                             />
                         </View>
                     </View>
 
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Temporary Password</Text>
-                        <View style={styles.inputWrapper}>
+                    <View style={styles.formSectionHeader}>
+                        <MaterialCommunityIcons name="shield-lock-outline" size={18} color="#94A3B8" />
+                        <Text style={styles.formSectionTitle}>SECURITY SETUP</Text>
+                    </View>
+
+                    <View style={styles.premiumInputCard}>
+                        <Text style={styles.premiumInputLabel}>Permanent Password</Text>
+                        <View style={styles.premiumInputFieldWrapper}>
+                            <MaterialCommunityIcons name="key-variant" size={20} color="#64748B" />
                             <TextInput
-                                style={styles.input}
+                                style={styles.premiumTextInputStyle}
                                 value={formData.password}
                                 onChangeText={(text) => setFormData({ ...formData, password: text })}
-                                placeholder="Min 6 characters"
-                                placeholderTextColor="#9CA3AF"
+                                placeholder="Secure password"
+                                placeholderTextColor="#94A3B8"
                                 secureTextEntry
                             />
                         </View>
                     </View>
-                </View>
 
-                {/* Status Section */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>PERMISSIONS</Text>
-                    <View style={styles.switchRow}>
-                        <View>
-                            <Text style={styles.switchLabel}>Enable Account</Text>
-                            <Text style={styles.switchDescription}>
-                                {formData.status ? 'User can access the app' : 'User will be suspended'}
-                            </Text>
+                    <View style={styles.premiumStatusToggleCard}>
+                        <View style={styles.statusToggleInfo}>
+                            <Text style={styles.statusToggleMain}>Activate Account</Text>
+                            <Text style={styles.statusToggleSub}>Enable system access immediately</Text>
                         </View>
                         <Switch
                             value={formData.status}
                             onValueChange={(value) => setFormData({ ...formData, status: value })}
-                            trackColor={{ false: '#D1D5DB', true: '#93C5FD' }}
-                            thumbColor={formData.status ? '#3B82F6' : '#F3F4F6'}
-                            ios_backgroundColor="#D1D5DB"
+                            trackColor={{ false: '#E2E8F0', true: '#C7D2FE' }}
+                            thumbColor={formData.status ? '#4F46E5' : '#94A3B8'}
                         />
                     </View>
-                </View>
 
-                {/* Action Buttons */}
-                <View style={styles.actionButtons}>
                     <TouchableOpacity
-                        style={styles.saveButton}
+                        style={styles.premiumRegisterButton}
                         onPress={handleSave}
                         disabled={loading}
                     >
                         <LinearGradient
                             colors={['#4F46E5', '#7C3AED']}
-                            style={styles.saveButtonGradient}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.registerButtonGradient}
                         >
                             {loading ? (
-                                <ActivityIndicator color="#fff" />
+                                <ActivityIndicator color="#fff" size="small" />
                             ) : (
-                                <Text style={styles.saveButtonText}>Create User</Text>
+                                <>
+                                    <Text style={styles.registerButtonText}>INITIALIZE MEMBER</Text>
+                                    <MaterialCommunityIcons name="account-check" size={22} color="#fff" />
+                                </>
                             )}
                         </LinearGradient>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={styles.cancelButton}
+                        style={styles.returnButton}
                         onPress={() => navigation.goBack()}
                     >
-                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                        <Text style={styles.returnButtonText}>Cancel & Exit</Text>
                     </TouchableOpacity>
                 </View>
             </ScrollView>
@@ -256,152 +277,210 @@ export default function AddUser({ navigation }) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#F8FAFC',
     },
-    header: {
+    premiumHeaderBox: {
+        width: '100%',
+    },
+    premiumHeaderGradient: {
+        paddingTop: Platform.OS === 'ios' ? 50 : 30,
+        paddingBottom: 24,
+        borderBottomLeftRadius: 35,
+        borderBottomRightRadius: 35,
+    },
+    headerLayout: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingTop: Platform.OS === 'ios' ? 50 : 20,
-        paddingHorizontal: 20,
-        paddingBottom: 20,
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
+        paddingHorizontal: 24,
     },
-    backButton: {
+    premiumBackButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 14,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        alignItems: 'center',
+        justifyContent: 'center',
         marginRight: 16,
     },
-    headerTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#111827',
-    },
-    content: {
+    headerTextLayer: {
         flex: 1,
     },
-    infoBox: {
-        flexDirection: 'row',
-        backgroundColor: '#F3F4F6',
-        margin: 20,
-        padding: 12,
-        borderRadius: 8,
-        alignItems: 'center',
-        gap: 10,
+    premiumHeaderTitle: {
+        fontSize: 22,
+        fontWeight: '800',
+        color: '#fff',
+        letterSpacing: -0.5,
     },
-    infoText: {
+    premiumHeaderSub: {
+        fontSize: 12,
+        color: 'rgba(255,255,255,0.7)',
+        fontWeight: '500',
+    },
+    headerLoadingBox: {
+        width: 32,
+        alignItems: 'center',
+    },
+    mainScroll: {
         flex: 1,
-        fontSize: 12,
-        color: '#6B7280',
-        lineHeight: 18,
     },
-    profileSection: {
-        alignItems: 'center',
-        paddingBottom: 24,
-    },
-    avatarContainer: {
-        marginBottom: 12,
-    },
-    avatar: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        backgroundColor: '#fff',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    profileName: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#111827',
-    },
-    section: {
-        paddingHorizontal: 20,
-        paddingBottom: 24,
-    },
-    sectionTitle: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#9CA3AF',
-        letterSpacing: 0.5,
-        marginBottom: 16,
-    },
-    inputGroup: {
-        marginBottom: 20,
-    },
-    inputLabel: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#374151',
-        marginBottom: 8,
-    },
-    inputWrapper: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        paddingHorizontal: 16,
-        height: 52,
-        justifyContent: 'center',
-    },
-    input: {
-        fontSize: 15,
-        color: '#111827',
-    },
-    switchRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        padding: 16,
-    },
-    switchLabel: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: '#111827',
-        marginBottom: 4,
-    },
-    switchDescription: {
-        fontSize: 13,
-        color: '#6B7280',
-    },
-    actionButtons: {
-        paddingHorizontal: 20,
+    scrollPadding: {
         paddingBottom: 40,
     },
-    saveButton: {
-        borderRadius: 12,
-        overflow: 'hidden',
-        marginBottom: 12,
-        shadowColor: '#4F46E5',
+    idCardSection: {
+        alignItems: 'center',
+        paddingVertical: 30,
+    },
+    idAvatarOuter: {
+        position: 'relative',
+        marginBottom: 16,
+    },
+    idAvatarInner: {
+        width: 100,
+        height: 100,
+        borderRadius: 35,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        shadowColor: '#64748B',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
         elevation: 4,
     },
-    saveButtonGradient: {
-        paddingVertical: 16,
+    idEditBadge: {
+        position: 'absolute',
+        bottom: -4,
+        right: -4,
+        width: 28,
+        height: 28,
+        borderRadius: 10,
+        backgroundColor: '#4F46E5',
+        borderWidth: 3,
+        borderColor: '#F8FAFC',
         alignItems: 'center',
         justifyContent: 'center',
-        minHeight: 56,
     },
-    saveButtonText: {
+    idCardMainLabel: {
+        fontSize: 20,
+        fontWeight: '800',
+        color: '#1E293B',
+    },
+    idCardSubLabel: {
+        fontSize: 13,
+        color: '#94A3B8',
+        fontWeight: '500',
+    },
+    creationFormBox: {
+        paddingHorizontal: 24,
+    },
+    formSectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 16,
+        marginTop: 10,
+        gap: 8,
+    },
+    formSectionTitle: {
+        fontSize: 11,
+        fontWeight: '800',
+        color: '#94A3B8',
+        letterSpacing: 1.2,
+    },
+    premiumInputCard: {
+        backgroundColor: '#fff',
+        borderRadius: 22,
+        padding: 16,
+        marginBottom: 16,
+        shadowColor: '#64748B',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 1,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+    },
+    premiumInputLabel: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#64748B',
+        marginBottom: 10,
+        marginLeft: 4,
+    },
+    premiumInputFieldWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F8FAFC',
+        borderRadius: 14,
+        paddingHorizontal: 12,
+        height: 48,
+        gap: 12,
+    },
+    premiumTextInputStyle: {
+        flex: 1,
+        fontSize: 15,
+        color: '#1E293B',
+        fontWeight: '600',
+    },
+    premiumStatusToggleCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+        padding: 20,
+        borderRadius: 22,
+        marginBottom: 30,
+        shadowColor: '#64748B',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 1,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+    },
+    statusToggleInfo: {
+        flex: 1,
+    },
+    statusToggleMain: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#fff',
+        color: '#1E293B',
+        marginBottom: 2,
     },
-    cancelButton: {
-        paddingVertical: 16,
+    statusToggleSub: {
+        fontSize: 12,
+        color: '#94A3B8',
+        fontWeight: '500',
+    },
+    premiumRegisterButton: {
+        borderRadius: 20,
+        overflow: 'hidden',
+        shadowColor: '#4F46E5',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.25,
+        shadowRadius: 15,
+        elevation: 8,
+    },
+    registerButtonGradient: {
+        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
+        paddingVertical: 18,
+        gap: 12,
     },
-    cancelButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#6B7280',
+    registerButtonText: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: '#fff',
+        letterSpacing: 1,
+    },
+    returnButton: {
+        alignItems: 'center',
+        paddingVertical: 20,
+        marginTop: 8,
+    },
+    returnButtonText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#94A3B8',
     },
 });
