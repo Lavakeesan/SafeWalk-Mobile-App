@@ -135,7 +135,7 @@ export default function ForgotPassword({ navigation }) {
               ) : (
                 <>
                   <Text style={styles.resetButtonText}>Send Reset Link</Text>
-                  <MaterialCommunityIcons name="email-send" size={20} color="#fff" />
+                  <MaterialCommunityIcons name="email-arrow-right" size={20} color="#fff" />
                 </>
               )}
             </LinearGradient>

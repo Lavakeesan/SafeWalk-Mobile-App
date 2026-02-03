@@ -27,10 +27,7 @@ export default function SignIn({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Forgot Password States
-  const [showForgotModal, setShowForgotModal] = useState(false);
-  const [resetEmail, setResetEmail] = useState('');
-  const [resetLoading, setResetLoading] = useState(false);
+
 
   const handleSignIn = async () => {
     if (!email.trim() || !password.trim()) {
@@ -62,33 +59,14 @@ export default function SignIn({ navigation }) {
         { text: 'Try Again', style: 'default' },
         {
           text: 'Reset Password',
-          onPress: () => setShowForgotModal(true),
+          onPress: () => navigation.navigate('ForgotPassword'),
           style: 'cancel'
         }
       ]);
     }
   };
 
-  const handleResetPassword = async () => {
-    if (!resetEmail.trim()) {
-      Alert.alert('Error', 'Please enter your email address');
-      return;
-    }
 
-    setResetLoading(true);
-    const result = await sendPasswordReset(resetEmail.trim());
-    setResetLoading(false);
-
-    if (result.success) {
-      Alert.alert(
-        'Email Sent',
-        'A password reset link has been sent to your email address. Please check your inbox.',
-        [{ text: 'OK', onPress: () => setShowForgotModal(false) }]
-      );
-    } else {
-      Alert.alert('Error', result.error || 'Failed to send reset email');
-    }
-  };
 
   return (
     <KeyboardAvoidingView
@@ -170,7 +148,7 @@ export default function SignIn({ navigation }) {
           {/* Forgot Password */}
           <TouchableOpacity
             style={styles.forgotPassword}
-            onPress={() => setShowForgotModal(true)}
+            onPress={() => navigation.navigate('ForgotPassword')}
           >
             <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
           </TouchableOpacity>
@@ -218,64 +196,7 @@ export default function SignIn({ navigation }) {
         </View>
       </ScrollView>
 
-      {/* Forgot Password Modal */}
-      <Modal
-        visible={showForgotModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowForgotModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Reset Password</Text>
-              <TouchableOpacity onPress={() => setShowForgotModal(false)}>
-                <MaterialCommunityIcons name="close" size={24} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
 
-            <View style={styles.modalBody}>
-              <Text style={styles.modalInstruction}>
-                Enter your email address and we'll send you a link to reset your password.
-              </Text>
-
-              <View style={styles.modalInputWrapper}>
-                <View style={styles.inputIconContainer}>
-                  <MaterialCommunityIcons name="email-outline" size={20} color="#6B7280" />
-                </View>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Email Address"
-                  placeholderTextColor="#9CA3AF"
-                  value={resetEmail}
-                  onChangeText={setResetEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
-
-              <TouchableOpacity
-                style={styles.resetButton}
-                onPress={handleResetPassword}
-                disabled={resetLoading}
-              >
-                <LinearGradient
-                  colors={['#4F46E5', '#7C3AED']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.resetButtonGradient}
-                >
-                  {resetLoading ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <Text style={styles.resetButtonText}>Send Reset Link</Text>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </KeyboardAvoidingView>
   );
 }

@@ -16,6 +16,8 @@ import UserManagement from './screens/admin/UserManagement';
 import EditUser from './screens/admin/EditUser';
 import AddUser from './screens/admin/AddUser';
 
+import ForgotPassword from './components/ForgotPassword';
+
 const Stack = createNativeStackNavigator();
 
 export default function App() {
@@ -27,6 +29,7 @@ export default function App() {
             <Stack.Navigator initialRouteName="SignIn" screenOptions={{ headerShown: false }}>
               <Stack.Screen name="SignIn" component={SignIn} />
               <Stack.Screen name="Register" component={Register} />
+              <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
               <Stack.Screen name="Dashboard" component={Dashboard} />
               <Stack.Screen name="TrustedContacts" component={TrustedContacts} />
               <Stack.Screen name="Observer" component={Observer} />
