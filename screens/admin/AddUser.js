@@ -368,7 +368,7 @@ const styles = StyleSheet.create({
     },
     idCardSubLabel: {
         fontSize: 13,
-        color: '#94A3B8',
+        color: '#1E293B',
         fontWeight: '500',
     },
     creationFormBox: {
@@ -384,7 +384,7 @@ const styles = StyleSheet.create({
     formSectionTitle: {
         fontSize: 11,
         fontWeight: '800',
-        color: '#94A3B8',
+        color: '#1E293B',
         letterSpacing: 1.2,
     },
     premiumInputCard: {
@@ -403,7 +403,7 @@ const styles = StyleSheet.create({
     premiumInputLabel: {
         fontSize: 12,
         fontWeight: '700',
-        color: '#64748B',
+        color: '#1E293B',
         marginBottom: 10,
         marginLeft: 4,
     },
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
     },
     statusToggleSub: {
         fontSize: 12,
-        color: '#94A3B8',
+        color: '#1E293B',
         fontWeight: '500',
     },
     premiumRegisterButton: {
@@ -481,6 +481,6 @@ const styles = StyleSheet.create({
     returnButtonText: {
         fontSize: 14,
         fontWeight: '700',
-        color: '#94A3B8',
+        color: '#111827',
     },
 });

@@ -21,7 +21,7 @@ import MapView, { Marker, Polyline, UrlTile } from '../components/CustomMapView'
 const { width, height } = Dimensions.get('window');
 
 const UPDATE_MS = 4000;
-const NO_MOVE_WINDOW_MS = 60000; // 1 minute (60,000ms) of no movement triggers popup
+const NO_MOVE_WINDOW_MS = 30000; // 30 seconds (30,000ms) of no movement triggers popup
 const NO_MOVE_DISTANCE_M = 10;
 const CONN_LOST_MS = 15000;
 const MIN_DISTANCE_THRESHOLD = 5; // Filter out GPS jitter/drift less than 5m
@@ -83,18 +83,20 @@ export default function Observer({ navigation, route }) {
     }
 
     // 2. Handle distance and path updates
-    // Use a local copy/check since context updates are async
     const lastLoc = locations[locations.length - 1];
 
     if (lastLoc) {
       const moveDist = haversine(lastLoc, newLoc);
 
-      // Filter drift: Only update trail if movement is significant
-      if (moveDist > MIN_DISTANCE_THRESHOLD) {
+      // Filter drift: Only update trail if movement is significant 
+      // AND we have a positive speed OR the distance jump is high enough to bypass jitter
+      const isSignificantMove = moveDist > MIN_DISTANCE_THRESHOLD && (newLoc.speed > 0.3 || moveDist > 12);
+
+      if (isSignificantMove && !showSafetyModal) {
         setDistance((d) => d + moveDist);
         setTimeout(() => pushLocation(newLoc), 0);
 
-        if (mapRef.current && !showSafetyModal) {
+        if (mapRef.current) {
           mapRef.current.animateToRegion({
             latitude: newLoc.lat,
             longitude: newLoc.lng,
@@ -368,10 +370,7 @@ View: https://www.google.com/maps?q=${current.lat},${current.lng}`;
       });
 
       if (t === 8) {
-        setAlert('suddenStop', 'Sudden stop detected. Are you okay?', true);
-      }
-      if (t === 15) {
-        setAlert('noMove', 'No movement for 1 minute.', true);
+        setAlert('noMove', 'No movement for 30 seconds.', true);
       }
     }, UPDATE_MS);
   }
