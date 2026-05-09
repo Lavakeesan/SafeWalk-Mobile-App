@@ -11,6 +11,8 @@ import { WalkProvider } from './context/WalkContext';
 import SignIn from './screens/SignIn';
 import Register from './screens/Register';
 import History from './screens/History';
+import Splash from './screens/Splash';
+import Onboarding from './screens/Onboarding';
 import AdminOverview from './screens/admin/AdminOverview';
 import UserManagement from './screens/admin/UserManagement';
 import EditUser from './screens/admin/EditUser';
@@ -26,7 +28,9 @@ export default function App() {
       <AuthProvider>
         <WalkProvider>
           <NavigationContainer>
-            <Stack.Navigator initialRouteName="SignIn" screenOptions={{ headerShown: false }}>
+            <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="Splash" component={Splash} />
+              <Stack.Screen name="Onboarding" component={Onboarding} />
               <Stack.Screen name="SignIn" component={SignIn} />
               <Stack.Screen name="Register" component={Register} />
               <Stack.Screen name="ForgotPassword" component={ForgotPassword} />

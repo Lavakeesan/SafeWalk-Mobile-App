@@ -10,7 +10,7 @@ import {
   Alert,
   StyleSheet,
   StatusBar,
-  ActivityIndicator,
+  SafeAreaView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -21,22 +21,9 @@ export default function ForgotPassword({ navigation }) {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Email validation regex
-  const validateEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
   const handleResetPassword = async () => {
-    // Validate email is not empty
     if (!email.trim()) {
       Alert.alert('Error', 'Please enter your email address');
-      return;
-    }
-
-    // Validate email format
-    if (!validateEmail(email.trim())) {
-      Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
 
@@ -47,234 +34,214 @@ export default function ForgotPassword({ navigation }) {
     if (result.success) {
       Alert.alert(
         'Success',
-        'A password reset link has been sent to your email address. Please check your inbox.',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.navigate('SignIn'),
-          },
-        ]
+        'A password reset link has been sent to your email address.',
+        [{ text: 'OK', onPress: () => navigation.navigate('SignIn') }]
       );
-      setEmail(''); // Clear email field
     } else {
-      Alert.alert('Error', result.error || 'Failed to send reset email. Please try again.');
+      Alert.alert('Error', result.error || 'Failed to send reset email.');
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" />
-
-      {/* Header with Gradient */}
-      <LinearGradient
-        colors={['#4F46E5', '#7C3AED', '#EC4899']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.headerContent}>
-          <View style={styles.logoContainer}>
-            <MaterialCommunityIcons name="lock-reset" size={60} color="#fff" />
-          </View>
-          <Text style={styles.headerTitle}>Reset Password</Text>
-          <Text style={styles.headerSubtitle}>Recover your account access</Text>
-        </View>
-      </LinearGradient>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Back Button */}
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#F8FAFC" />
+          </TouchableOpacity>
 
-      {/* Content */}
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={styles.contentContainer}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.formContainer}>
-          <Text style={styles.instructionText}>
-            Enter your email address and we'll send you a link to reset your password.
-          </Text>
-
-          {/* Email Input */}
-          <View style={styles.inputWrapper}>
-            <View style={styles.inputIconContainer}>
-              <MaterialCommunityIcons name="email-outline" size={20} color="#6B7280" />
+          {/* Logo & Header */}
+          <View style={styles.headerSection}>
+            <View style={styles.logoContainer}>
+              <LinearGradient
+                colors={['#3B82F6', '#06B6D4']}
+                style={styles.logoGradient}
+              >
+                <MaterialCommunityIcons name="lock-reset" size={40} color="#fff" />
+              </LinearGradient>
             </View>
-            <TextInput
-              style={styles.input}
-              placeholder="Email Address"
-              placeholderTextColor="#9CA3AF"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              autoFocus
-            />
+            <Text style={styles.appName}>Reset Password</Text>
+            <Text style={styles.appSubtitle}>We'll send you a link to recover your account.</Text>
           </View>
 
-          {/* Reset Password Button */}
-          <TouchableOpacity
-            style={[styles.resetButton, loading && styles.resetButtonDisabled]}
-            onPress={handleResetPassword}
-            disabled={loading}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={loading ? ['#9CA3AF', '#9CA3AF'] : ['#4F46E5', '#7C3AED']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.resetButtonGradient}
-            >
-              {loading ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator color="#fff" size="small" />
-                  <Text style={styles.resetButtonText}>Sending...</Text>
-                </View>
-              ) : (
-                <>
-                  <Text style={styles.resetButtonText}>Send Reset Link</Text>
-                  <MaterialCommunityIcons name="email-arrow-right" size={20} color="#fff" />
-                </>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
+          {/* Card */}
+          <View style={styles.card}>
+            {/* Email Field */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Email Address</Text>
+              <View style={styles.inputWrapper}>
+                <MaterialCommunityIcons name="email-outline" size={20} color="#94A3B8" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="name@example.com"
+                  placeholderTextColor="#64748B"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+            </View>
 
-          {/* Back to Login Link */}
-          <TouchableOpacity
-            style={styles.backToLogin}
-            onPress={() => navigation.navigate('SignIn')}
-          >
-            <MaterialCommunityIcons name="arrow-left" size={20} color="#4F46E5" />
-            <Text style={styles.backToLoginText}>Back to Login</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+            {/* Reset Button */}
+            <TouchableOpacity
+              style={styles.resetButton}
+              onPress={handleResetPassword}
+              disabled={loading}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={['#2563EB', '#06B6D4']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.buttonGradient}
+              >
+                <Text style={styles.resetButtonText}>
+                  {loading ? 'Sending...' : 'Send Reset Link'}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+
+          {/* Footer */}
+          <View style={styles.footer}>
+            <TouchableOpacity onPress={() => navigation.navigate('SignIn')}>
+              <Text style={styles.signinText}>Back to Sign In</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#0F172A',
+  },
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
-  header: {
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: 40,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-  },
-  headerContent: {
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  logoContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  headerTitle: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontWeight: '500',
-  },
-  content: {
-    flex: 1,
-  },
-  contentContainer: {
+  scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingTop: 40,
+    paddingTop: 20,
     paddingBottom: 40,
+    alignItems: 'center',
   },
-  formContainer: {
+  backButton: {
+    alignSelf: 'flex-start',
+    padding: 8,
+    marginBottom: 20,
+  },
+  headerSection: {
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  logoContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginBottom: 20,
+    elevation: 10,
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+  },
+  logoGradient: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  instructionText: {
+  appName: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#F8FAFC',
+    marginBottom: 8,
+  },
+  appSubtitle: {
     fontSize: 16,
-    color: '#6B7280',
-    lineHeight: 24,
-    marginBottom: 32,
+    color: '#94A3B8',
     textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+  card: {
+    width: '100%',
+    backgroundColor: 'rgba(30, 41, 59, 0.7)',
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  inputGroup: {
+    marginBottom: 24,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#CBD5E1',
+    marginBottom: 8,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    marginBottom: 24,
     paddingHorizontal: 16,
     height: 56,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
-  inputIconContainer: {
+  inputIcon: {
     marginRight: 12,
   },
   input: {
     flex: 1,
-    fontSize: 16,
-    color: '#1F2937',
+    color: '#F8FAFC',
+    fontSize: 15,
   },
   resetButton: {
     borderRadius: 12,
     overflow: 'hidden',
-    marginBottom: 24,
-    shadowColor: '#4F46E5',
+    elevation: 8,
+    shadowColor: '#2563EB',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 4,
   },
-  resetButtonDisabled: {
-    opacity: 0.6,
-  },
-  resetButtonGradient: {
-    flexDirection: 'row',
+  buttonGradient: {
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    height: 56,
   },
   resetButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
     color: '#fff',
-    marginRight: 8,
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  backToLogin: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-  },
-  backToLoginText: {
     fontSize: 16,
-    color: '#4F46E5',
-    fontWeight: '600',
-    marginLeft: 8,
+    fontWeight: 'bold',
+  },
+  footer: {
+    marginTop: 30,
+    alignItems: 'center',
+  },
+  signinText: {
+    color: '#3B82F6',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });
+

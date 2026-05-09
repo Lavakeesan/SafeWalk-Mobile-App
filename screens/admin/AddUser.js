@@ -277,7 +277,7 @@ export default function AddUser({ navigation }) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: '#0F172A',
     },
     premiumHeaderBox: {
         width: '100%',
@@ -364,11 +364,11 @@ const styles = StyleSheet.create({
     idCardMainLabel: {
         fontSize: 20,
         fontWeight: '800',
-        color: '#1E293B',
+        color: '#F8FAFC',
     },
     idCardSubLabel: {
         fontSize: 13,
-        color: '#1E293B',
+        color: '#94A3B8',
         fontWeight: '500',
     },
     creationFormBox: {
@@ -384,33 +384,33 @@ const styles = StyleSheet.create({
     formSectionTitle: {
         fontSize: 11,
         fontWeight: '800',
-        color: '#1E293B',
+        color: '#94A3B8',
         letterSpacing: 1.2,
     },
     premiumInputCard: {
-        backgroundColor: '#fff',
+        backgroundColor: 'rgba(30, 41, 59, 0.7)',
         borderRadius: 22,
         padding: 16,
         marginBottom: 16,
-        shadowColor: '#64748B',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
+        shadowOpacity: 0.1,
         shadowRadius: 10,
         elevation: 1,
         borderWidth: 1,
-        borderColor: '#F1F5F9',
+        borderColor: 'rgba(255, 255, 255, 0.05)',
     },
     premiumInputLabel: {
         fontSize: 12,
         fontWeight: '700',
-        color: '#1E293B',
+        color: '#94A3B8',
         marginBottom: 10,
         marginLeft: 4,
     },
     premiumInputFieldWrapper: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F8FAFC',
+        backgroundColor: 'rgba(15, 23, 42, 0.5)',
         borderRadius: 14,
         paddingHorizontal: 12,
         height: 48,
@@ -419,23 +419,23 @@ const styles = StyleSheet.create({
     premiumTextInputStyle: {
         flex: 1,
         fontSize: 15,
-        color: '#1E293B',
+        color: '#F8FAFC',
         fontWeight: '600',
     },
     premiumStatusToggleCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#fff',
+        backgroundColor: 'rgba(30, 41, 59, 0.7)',
         padding: 20,
         borderRadius: 22,
         marginBottom: 30,
-        shadowColor: '#64748B',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
+        shadowOpacity: 0.1,
         shadowRadius: 10,
         elevation: 1,
         borderWidth: 1,
-        borderColor: '#F1F5F9',
+        borderColor: 'rgba(255, 255, 255, 0.05)',
     },
     statusToggleInfo: {
         flex: 1,
@@ -443,12 +443,12 @@ const styles = StyleSheet.create({
     statusToggleMain: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#1E293B',
+        color: '#F8FAFC',
         marginBottom: 2,
     },
     statusToggleSub: {
         fontSize: 12,
-        color: '#1E293B',
+        color: '#94A3B8',
         fontWeight: '500',
     },
     premiumRegisterButton: {
@@ -481,6 +481,6 @@ const styles = StyleSheet.create({
     returnButtonText: {
         fontSize: 14,
         fontWeight: '700',
-        color: '#111827',
+        color: '#94A3B8',
     },
 });

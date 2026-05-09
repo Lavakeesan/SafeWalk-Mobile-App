@@ -253,45 +253,39 @@ export default function UserManagement({ navigation }) {
             <StatusBar barStyle="light-content" />
 
             {/* Immersive Premium Header */}
-            <View style={styles.premiumHeaderWrapper}>
-                <LinearGradient
-                    colors={['#4F46E5', '#7C3AED']}
-                    style={styles.premiumHeaderGradient}
+            <View style={styles.simpleHeader}>
+                <TouchableOpacity
+                    style={styles.simpleBackButton}
+                    onPress={() => navigation.goBack()}
                 >
-                    <View style={styles.headerLayout}>
-                        <TouchableOpacity
-                            style={styles.premiumBackButton}
-                            onPress={() => navigation.goBack()}
-                        >
-                            <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
-                        </TouchableOpacity>
-                        <View style={styles.headerTitleLayer}>
-                            <Text style={styles.premiumTitleMain}>Member Directory</Text>
-                            <Text style={styles.premiumTitleSub}>Manage and monitor community users</Text>
-                        </View>
-                        <View style={styles.headerStatsBadge}>
-                            <Text style={styles.statBadgeValue}>{users.length}</Text>
-                            <Text style={styles.statBadgeLabel}>USERS</Text>
-                        </View>
-                    </View>
+                    <MaterialCommunityIcons name="arrow-left" size={24} color="#F8FAFC" />
+                </TouchableOpacity>
+                <View style={styles.headerTitleLayer}>
+                    <Text style={styles.simpleTitleMain}>Member Directory</Text>
+                    <Text style={styles.simpleTitleSub}>Manage community users</Text>
+                </View>
+                <View style={styles.headerStatsBadge}>
+                    <Text style={styles.statBadgeValue}>{users.length}</Text>
+                    <Text style={styles.statBadgeLabel}>USERS</Text>
+                </View>
+            </View>
 
-                    {/* Integrated Search Box */}
-                    <View style={styles.integratedSearchBox}>
-                        <MaterialCommunityIcons name="magnify" size={22} color="rgba(255,255,255,0.7)" />
-                        <TextInput
-                            style={styles.searchInputElement}
-                            placeholder="Find member by name or email..."
-                            placeholderTextColor="rgba(255,255,255,0.6)"
-                            value={searchQuery}
-                            onChangeText={setSearchQuery}
-                        />
-                        {searchQuery !== '' && (
-                            <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                <MaterialCommunityIcons name="close-circle" size={18} color="#fff" />
-                            </TouchableOpacity>
-                        )}
-                    </View>
-                </LinearGradient>
+            <View style={styles.searchContainer}>
+                <View style={styles.simpleSearchBox}>
+                    <MaterialCommunityIcons name="magnify" size={20} color="#94A3B8" />
+                    <TextInput
+                        style={styles.simpleSearchInput}
+                        placeholder="Find member by name or email..."
+                        placeholderTextColor="#64748B"
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                    />
+                    {searchQuery !== '' && (
+                        <TouchableOpacity onPress={() => setSearchQuery('')}>
+                            <MaterialCommunityIcons name="close-circle" size={18} color="#94A3B8" />
+                        </TouchableOpacity>
+                    )}
+                </View>
             </View>
 
             {/* Filter Ribbons */}
@@ -460,80 +454,79 @@ export default function UserManagement({ navigation }) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: '#0F172A',
     },
-    premiumHeaderWrapper: {
-        width: '100%',
-    },
-    premiumHeaderGradient: {
-        paddingTop: Platform.OS === 'ios' ? 50 : 30,
-        paddingBottom: 24,
-        borderBottomLeftRadius: 35,
-        borderBottomRightRadius: 35,
-    },
-    headerLayout: {
+    simpleHeader: {
         flexDirection: 'row',
         alignItems: 'center',
+        paddingTop: Platform.OS === 'ios' ? 60 : 40,
         paddingHorizontal: 24,
-        marginBottom: 20,
+        paddingBottom: 20,
     },
-    premiumBackButton: {
+    simpleBackButton: {
         width: 44,
         height: 44,
         borderRadius: 14,
-        backgroundColor: 'rgba(255,255,255,0.15)',
+        backgroundColor: 'rgba(30, 41, 59, 0.5)',
         alignItems: 'center',
         justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
     },
     headerTitleLayer: {
         flex: 1,
         marginLeft: 16,
     },
-    premiumTitleMain: {
+    simpleTitleMain: {
         fontSize: 22,
         fontWeight: '800',
-        color: '#fff',
+        color: '#F8FAFC',
         letterSpacing: -0.5,
     },
-    premiumTitleSub: {
+    simpleTitleSub: {
         fontSize: 12,
-        color: 'rgba(255,255,255,0.7)',
+        color: '#94A3B8',
         fontWeight: '500',
     },
     headerStatsBadge: {
-        backgroundColor: 'rgba(255,255,255,0.2)',
+        backgroundColor: 'rgba(79, 70, 229, 0.2)',
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 12,
         alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(79, 70, 229, 0.3)',
     },
     statBadgeValue: {
         fontSize: 16,
         fontWeight: '800',
-        color: '#fff',
+        color: '#818CF8',
     },
     statBadgeLabel: {
         fontSize: 8,
         fontWeight: '800',
-        color: '#fff',
+        color: '#818CF8',
         opacity: 0.8,
     },
-    integratedSearchBox: {
+    searchContainer: {
+        paddingHorizontal: 24,
+        marginBottom: 10,
+    },
+    simpleSearchBox: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.15)',
-        borderRadius: 18,
-        marginHorizontal: 20,
+        backgroundColor: 'rgba(30, 41, 59, 0.5)',
+        borderRadius: 16,
         paddingHorizontal: 16,
         height: 52,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        borderColor: 'rgba(255, 255, 255, 0.05)',
     },
-    searchInputElement: {
+    simpleSearchInput: {
         flex: 1,
         marginLeft: 12,
         fontSize: 15,
-        color: '#fff',
+        color: '#F8FAFC',
         fontWeight: '500',
     },
     filterSection: {
@@ -548,9 +541,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: 18,
         paddingVertical: 10,
         borderRadius: 14,
-        backgroundColor: '#fff',
+        backgroundColor: 'rgba(30, 41, 59, 0.5)',
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
     },
     filterButtonActive: {
         backgroundColor: '#4F46E5',
@@ -564,7 +557,7 @@ const styles = StyleSheet.create({
     filterButtonText: {
         fontSize: 13,
         fontWeight: '700',
-        color: '#1E293B',
+        color: '#94A3B8',
     },
     filterButtonTextActive: {
         color: '#fff',
@@ -576,17 +569,17 @@ const styles = StyleSheet.create({
     premiumUserCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#fff',
+        backgroundColor: 'rgba(30, 41, 59, 0.7)',
         borderRadius: 24,
         padding: 16,
         marginBottom: 16,
-        shadowColor: '#64748B',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.06,
+        shadowOpacity: 0.1,
         shadowRadius: 10,
         elevation: 2,
         borderWidth: 1,
-        borderColor: '#F1F5F9',
+        borderColor: 'rgba(255, 255, 255, 0.05)',
     },
     userCardInfo: {
         flex: 1,
@@ -631,7 +624,7 @@ const styles = StyleSheet.create({
     premiumUserName: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#1E293B',
+        color: '#F8FAFC',
     },
     premiumStatusBadge: {
         paddingHorizontal: 8,
@@ -645,7 +638,7 @@ const styles = StyleSheet.create({
     },
     premiumUserEmail: {
         fontSize: 13,
-        color: '#1E293B',
+        color: '#94A3B8',
         marginBottom: 8,
     },
     premiumUserMetaRow: {
@@ -667,7 +660,7 @@ const styles = StyleSheet.create({
     premiumMetaText: {
         fontSize: 11,
         fontWeight: '600',
-        color: '#1E293B',
+        color: '#CBD5E1',
     },
     userActionArea: {
         marginLeft: 12,
@@ -744,16 +737,18 @@ const styles = StyleSheet.create({
         padding: 24,
     },
     deleteModalContent: {
-        backgroundColor: '#fff',
+        backgroundColor: '#1E293B',
         width: '100%',
         borderRadius: 30,
         padding: 28,
         alignItems: 'center',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 20 },
-        shadowOpacity: 0.15,
+        shadowOpacity: 0.3,
         shadowRadius: 30,
         elevation: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
     },
     warningIconBadge: {
         width: 80,
@@ -767,18 +762,18 @@ const styles = StyleSheet.create({
     deleteModalTitle: {
         fontSize: 22,
         fontWeight: '800',
-        color: '#1E293B',
+        color: '#F8FAFC',
         marginBottom: 10,
     },
     deleteModalMessage: {
         fontSize: 15,
-        color: '#64748B',
+        color: '#94A3B8',
         textAlign: 'center',
         lineHeight: 22,
         marginBottom: 30,
     },
     highlightText: {
-        color: '#1E293B',
+        color: '#F8FAFC',
         fontWeight: '800',
     },
     deleteModalActions: {

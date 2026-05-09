@@ -96,7 +96,7 @@ export default function EditUser({ navigation, route }) {
                     style={styles.backButton}
                     onPress={() => navigation.goBack()}
                 >
-                    <MaterialCommunityIcons name="chevron-left" size={32} color="#111827" />
+                    <MaterialCommunityIcons name="chevron-left" size={32} color="#F8FAFC" />
                 </TouchableOpacity>
                 <View style={styles.headerTitleContainer}>
                     <Text style={styles.headerTitle}>Edit User</Text>
@@ -261,7 +261,7 @@ export default function EditUser({ navigation, route }) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#0F172A',
     },
     header: {
         flexDirection: 'row',
@@ -269,9 +269,9 @@ const styles = StyleSheet.create({
         paddingTop: Platform.OS === 'ios' ? 60 : 30,
         paddingHorizontal: 20,
         paddingBottom: 20,
-        backgroundColor: '#fff',
+        backgroundColor: '#0F172A',
         borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
+        borderBottomColor: 'rgba(255, 255, 255, 0.1)',
     },
     backButton: {
         width: 40,
@@ -280,6 +280,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginLeft: -10,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
     },
     headerTitleContainer: {
         flex: 1,
@@ -288,7 +289,7 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 20,
         fontWeight: '800',
-        color: '#111827',
+        color: '#F8FAFC',
     },
     headerSubtitle: {
         fontSize: 12,
@@ -306,14 +307,16 @@ const styles = StyleSheet.create({
     },
     profileCard: {
         margin: 20,
-        backgroundColor: '#fff',
+        backgroundColor: 'rgba(30, 41, 59, 0.7)',
         borderRadius: 24,
         overflow: 'hidden',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.2,
         shadowRadius: 20,
         elevation: 5,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
     },
     profileGradient: {
         padding: 30,
@@ -377,7 +380,7 @@ const styles = StyleSheet.create({
     statNumber: {
         fontSize: 18,
         fontWeight: '800',
-        color: '#111827',
+        color: '#F8FAFC',
     },
     statLabel: {
         fontSize: 11,
@@ -388,7 +391,7 @@ const styles = StyleSheet.create({
     statDivider: {
         width: 1,
         height: 30,
-        backgroundColor: '#F3F4F6',
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
     },
     statusBadge: {
         paddingHorizontal: 12,
@@ -412,15 +415,15 @@ const styles = StyleSheet.create({
         marginTop: 10,
     },
     inputGroup: {
-        backgroundColor: '#fff',
+        backgroundColor: 'rgba(30, 41, 59, 0.5)',
         borderRadius: 16,
         padding: 16,
         marginBottom: 16,
         borderWidth: 1,
-        borderColor: '#F3F4F6',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.02,
+        shadowOpacity: 0.05,
         shadowRadius: 10,
     },
     inputLabelRow: {
@@ -431,12 +434,12 @@ const styles = StyleSheet.create({
     inputLabel: {
         fontSize: 13,
         fontWeight: '700',
-        color: '#374151',
+        color: '#94A3B8',
         marginLeft: 8,
     },
     input: {
         fontSize: 16,
-        color: '#111827',
+        color: '#F8FAFC',
         fontWeight: '600',
         paddingVertical: 5,
     },
@@ -444,12 +447,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        backgroundColor: '#fff',
+        backgroundColor: 'rgba(30, 41, 59, 0.5)',
         padding: 20,
         borderRadius: 16,
         marginBottom: 30,
         borderWidth: 1,
-        borderColor: '#F3F4F6',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
     },
     statusInfo: {
         flex: 1,
@@ -457,12 +460,12 @@ const styles = StyleSheet.create({
     statusTitle: {
         fontSize: 15,
         fontWeight: '700',
-        color: '#111827',
+        color: '#F8FAFC',
         marginBottom: 2,
     },
     statusDesc: {
         fontSize: 12,
-        color: '#6B7280',
+        color: '#94A3B8',
     },
     primaryActionButton: {
         borderRadius: 16,

@@ -20,6 +20,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
+import { PieChart, LineChart } from 'react-native-chart-kit';
 
 const { width } = Dimensions.get('window');
 
@@ -29,6 +30,10 @@ export default function AdminOverview({ navigation }) {
         totalUsers: 0,
         activeNow: 0,
         newSignups: 0,
+    });
+    const [registrationData, setRegistrationData] = useState({
+        labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+        datasets: [{ data: [0, 0, 0, 0, 0, 0, 0] }]
     });
     const [recentActivity, setRecentActivity] = useState([]);
     const [allUsers, setAllUsers] = useState([]);
@@ -83,15 +88,29 @@ export default function AdminOverview({ navigation }) {
 
             // Get total users
             const usersSnapshot = await getDocs(collection(db, 'users'));
-            // Calculate stats only for users with role 'user'
+
             let totalUsers = 0;
-            let newSignups = 0;
             let activeNow = 0;
+            let newSignups = 0;
+
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+            // Registration Graph Logic
+            const dayCounts = {};
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const last7Days = [];
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const dayLabel = days[d.getDay()];
+                const dateString = d.toISOString().split('T')[0];
+                last7Days.push({ label: dayLabel, date: dateString });
+                dayCounts[dateString] = 0;
+            }
 
             usersSnapshot.forEach((doc) => {
                 const userData = doc.data();
-
-                // ONLY count if role is 'user' (or missing, assuming default is user)
                 if (userData.role === 'admin') return;
 
                 totalUsers++;
@@ -101,7 +120,7 @@ export default function AdminOverview({ navigation }) {
                     activeNow++;
                 }
 
-                // Check new signups
+                // Check new signups & Chart data
                 if (userData.createdAt) {
                     try {
                         const createdDate = typeof userData.createdAt.toDate === 'function'
@@ -111,10 +130,22 @@ export default function AdminOverview({ navigation }) {
                         if (createdDate > sevenDaysAgo) {
                             newSignups++;
                         }
+
+                        const dateString = createdDate.toISOString().split('T')[0];
+                        if (dayCounts.hasOwnProperty(dateString)) {
+                            dayCounts[dateString]++;
+                        }
                     } catch (error) {
                         console.log('Error parsing createdAt for user:', doc.id);
                     }
                 }
+            });
+
+            setRegistrationData({
+                labels: last7Days.map(d => d.label),
+                datasets: [{
+                    data: last7Days.map(d => dayCounts[d.date])
+                }]
             });
 
 
@@ -346,65 +377,49 @@ export default function AdminOverview({ navigation }) {
         <View style={styles.container}>
             <StatusBar barStyle="light-content" />
 
-            {/* Premium Header Design */}
-            <View style={styles.premiumHeaderContainer}>
-                <LinearGradient
-                    colors={['#4F46E5', '#7C3AED', '#6366F1']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.premiumHeaderGradient}
-                >
-                    <View style={styles.headerSafeLayer}>
-                        <View style={styles.headerTopNavigation}>
-                            <View style={styles.greetingSection}>
-                                <Text style={styles.greetingPrefix}>Welcome back,</Text>
-                                <Text style={styles.adminDisplayName}>
-                                    {adminUser?.displayName || 'Administrator'}
-                                </Text>
-                            </View>
-                            <View style={styles.headerActionsBox}>
-                                <TouchableOpacity
-                                    style={styles.premiumHeaderIcon}
-                                    onPress={() => {
-                                        Keyboard.dismiss();
-                                        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-                                        const newUsers = allUsers.filter(user =>
-                                            user.createdAt && new Date(user.createdAt) > twentyFourHoursAgo
-                                        );
-                                        setNewUsersList(newUsers);
-                                        setShowNewUsersModal(true);
-                                    }}
-                                >
-                                    <MaterialCommunityIcons name="bell-ring-outline" size={24} color="#fff" />
-                                    <View style={styles.premiumBadge} />
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={styles.premiumAvatarBox}
-                                    onPress={() => setShowAdminProfileModal(true)}
-                                >
-                                    <LinearGradient
-                                        colors={['#fff', '#E0E7FF']}
-                                        style={styles.avatarInnerGradient}
-                                    >
-                                        <MaterialCommunityIcons name="shield-check" size={20} color="#4F46E5" />
-                                    </LinearGradient>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
+            <View style={styles.simpleHeader}>
+                <View style={styles.greetingSection}>
+                    <Text style={styles.greetingPrefix}>Welcome back,</Text>
+                    <Text style={styles.adminDisplayName}>
+                        {adminUser?.displayName || 'Administrator'}
+                    </Text>
+                </View>
+                <View style={styles.headerActionsBox}>
+                    <TouchableOpacity
+                        style={styles.simpleHeaderIcon}
+                        onPress={() => {
+                            Keyboard.dismiss();
+                            const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+                            const newUsers = allUsers.filter(user =>
+                                user.createdAt && new Date(user.createdAt) > twentyFourHoursAgo
+                            );
+                            setNewUsersList(newUsers);
+                            setShowNewUsersModal(true);
+                        }}
+                    >
+                        <MaterialCommunityIcons name="bell-outline" size={24} color="#F8FAFC" />
+                        <View style={styles.notificationDot} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.simpleAvatarBox}
+                        onPress={() => setShowAdminProfileModal(true)}
+                    >
+                        <MaterialCommunityIcons name="account-circle-outline" size={32} color="#3B82F6" />
+                    </TouchableOpacity>
+                </View>
+            </View>
 
-                        {/* Search Bar Integration */}
-                        <View style={styles.immersiveSearchBox}>
-                            <MaterialCommunityIcons name="magnify" size={22} color="rgba(255,255,255,0.7)" />
-                            <TextInput
-                                style={styles.immersiveSearchInput}
-                                placeholder="Search system resources..."
-                                placeholderTextColor="rgba(255,255,255,0.6)"
-                                value={searchQuery}
-                                onChangeText={setSearchQuery}
-                            />
-                        </View>
-                    </View>
-                </LinearGradient>
+            <View style={styles.searchContainer}>
+                <View style={styles.simpleSearchBox}>
+                    <MaterialCommunityIcons name="magnify" size={20} color="#94A3B8" />
+                    <TextInput
+                        style={styles.simpleSearchInput}
+                        placeholder="Search system resources..."
+                        placeholderTextColor="#64748B"
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                    />
+                </View>
             </View>
 
             <ScrollView
@@ -461,6 +476,92 @@ export default function AdminOverview({ navigation }) {
                     </View>
                 ) : (
                     <>
+                        {/* Status Insights Chart Section */}
+                        <View style={styles.chartSection}>
+                            <View style={styles.chartCard}>
+                                <View style={styles.chartHeader}>
+                                    <MaterialCommunityIcons name="chart-pie" size={20} color="#818CF8" />
+                                    <Text style={styles.chartTitle}>Member Status Overview</Text>
+                                </View>
+                                <View style={styles.chartContainer}>
+                                    <PieChart
+                                        data={[
+                                            {
+                                                name: 'Active',
+                                                population: stats.activeNow,
+                                                color: '#3B82F6',
+                                                legendFontColor: '#F8FAFC',
+                                                legendFontSize: 12,
+                                            },
+                                            {
+                                                name: 'Inactive',
+                                                population: stats.totalUsers - stats.activeNow,
+                                                color: '#F43F5E',
+                                                legendFontColor: '#F8FAFC',
+                                                legendFontSize: 12,
+                                            },
+                                        ]}
+                                        width={width - 80}
+                                        height={180}
+                                        chartConfig={{
+                                            color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+                                        }}
+                                        accessor={"population"}
+                                        backgroundColor={"transparent"}
+                                        paddingLeft={"15"}
+                                        center={[10, 0]}
+                                        absolute
+                                    />
+                                </View>
+                                <View style={styles.chartFooter}>
+                                    <View style={styles.chartLegendItem}>
+                                        <View style={[styles.legendDot, { backgroundColor: '#3B82F6' }]} />
+                                        <Text style={styles.legendLabel}>Active Users ({stats.activeNow})</Text>
+                                    </View>
+                                    <View style={styles.chartLegendItem}>
+                                        <View style={[styles.legendDot, { backgroundColor: '#F43F5E' }]} />
+                                        <Text style={styles.legendLabel}>Inactive Users ({stats.totalUsers - stats.activeNow})</Text>
+                                    </View>
+                                </View>
+                            </View>
+                        </View>
+                        <View style={styles.chartSection}>
+                            <View style={styles.chartCard}>
+                                <View style={styles.chartHeader}>
+                                    <MaterialCommunityIcons name="trending-up" size={20} color="#10B981" />
+                                    <Text style={styles.chartTitle}>Registration Trends</Text>
+                                </View>
+                                <View style={styles.chartContainer}>
+                                    <LineChart
+                                        data={registrationData}
+                                        width={width - 80}
+                                        height={180}
+                                        chartConfig={{
+                                            backgroundColor: "transparent",
+                                            backgroundGradientFrom: "rgba(30, 41, 59, 0)",
+                                            backgroundGradientTo: "rgba(30, 41, 59, 0)",
+                                            decimalPlaces: 0,
+                                            color: (opacity = 1) => `rgba(129, 140, 248, ${opacity})`,
+                                            labelColor: (opacity = 1) => `rgba(148, 163, 184, ${opacity})`,
+                                            style: { borderRadius: 16 },
+                                            propsForDots: {
+                                                r: "4",
+                                                strokeWidth: "2",
+                                                stroke: "#4F46E5"
+                                            }
+                                        }}
+                                        bezier
+                                        style={{
+                                            marginVertical: 8,
+                                            borderRadius: 16
+                                        }}
+                                    />
+                                </View>
+                                <View style={styles.chartFooter}>
+                                    <Text style={styles.chartFooterText}>Daily user growth over the last 7 days</Text>
+                                </View>
+                            </View>
+                        </View>
                         <View style={styles.premiumStatsGrid}>
                             <StatCard
                                 title="CORE USERS"
@@ -558,31 +659,28 @@ export default function AdminOverview({ navigation }) {
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.premiumAlertModal}>
-                        <LinearGradient
-                            colors={['#EF4444', '#991B1B']}
-                            style={styles.modalPremiumHeader}
-                        >
+                        <View style={styles.modalSimpleHeader}>
                             <View style={styles.modalHeaderTopRow}>
                                 <View style={styles.modalHeaderTitleGroup}>
-                                    <Text style={styles.modalHeaderTitleMain}>Safety Dispatch</Text>
-                                    <Text style={styles.modalHeaderTitleSub}>Push urgent notifications to users</Text>
+                                    <Text style={styles.modalSimpleTitleMain}>Safety Dispatch</Text>
+                                    <Text style={styles.modalSimpleTitleSub}>Push urgent notifications to users</Text>
                                 </View>
                                 <TouchableOpacity
-                                    style={styles.modalHeaderCloseCircle}
+                                    style={styles.modalSimpleCloseCircle}
                                     onPress={() => {
                                         setShowAlertModal(false);
                                         setShowUserDropdown(false);
                                     }}
                                 >
-                                    <MaterialCommunityIcons name="close" size={20} color="#fff" />
+                                    <MaterialCommunityIcons name="close" size={22} color="#94A3B8" />
                                 </TouchableOpacity>
                             </View>
 
                             <View style={styles.alertTypeIndicator}>
-                                <MaterialCommunityIcons name="broadcast" size={16} color="rgba(255,255,255,0.8)" />
-                                <Text style={styles.alertTypeText}>System Priority Alert</Text>
+                                <MaterialCommunityIcons name="broadcast" size={16} color="#EF4444" />
+                                <Text style={styles.alertSimpleTypeText}>System Priority Alert</Text>
                             </View>
-                        </LinearGradient>
+                        </View>
 
                         <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
                             <View style={styles.alertContentContainer}>
@@ -692,39 +790,36 @@ export default function AdminOverview({ navigation }) {
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.premiumContactsModal}>
-                        <LinearGradient
-                            colors={['#4F46E5', '#7C3AED']}
-                            style={styles.modalPremiumHeader}
-                        >
+                        <View style={styles.modalSimpleHeader}>
                             <View style={styles.modalHeaderTopRow}>
                                 <View style={styles.modalHeaderTitleGroup}>
-                                    <Text style={styles.modalHeaderTitleMain}>Trusted Networks</Text>
-                                    <Text style={styles.modalHeaderTitleSub}>Monitoring user connections</Text>
+                                    <Text style={styles.modalSimpleTitleMain}>Trusted Networks</Text>
+                                    <Text style={styles.modalSimpleTitleSub}>Monitoring user connections</Text>
                                 </View>
                                 <TouchableOpacity
-                                    style={styles.modalHeaderCloseCircle}
+                                    style={styles.modalSimpleCloseCircle}
                                     onPress={() => setShowContactsModal(false)}
                                 >
-                                    <MaterialCommunityIcons name="close" size={20} color="#fff" />
+                                    <MaterialCommunityIcons name="close" size={22} color="#94A3B8" />
                                 </TouchableOpacity>
                             </View>
 
-                            <View style={styles.modalSearchWrapper}>
-                                <MaterialCommunityIcons name="magnify" size={20} color="rgba(255,255,255,0.7)" />
+                            <View style={styles.modalSimpleSearchWrapper}>
+                                <MaterialCommunityIcons name="magnify" size={20} color="#64748B" />
                                 <TextInput
-                                    style={styles.modalSearchInputPremium}
+                                    style={styles.modalSimpleSearchInput}
                                     placeholder="Search users..."
-                                    placeholderTextColor="rgba(255,255,255,0.6)"
+                                    placeholderTextColor="#64748B"
                                     value={contactsSearchQuery}
                                     onChangeText={setContactsSearchQuery}
                                 />
                                 {contactsSearchQuery !== '' && (
                                     <TouchableOpacity onPress={() => setContactsSearchQuery('')}>
-                                        <MaterialCommunityIcons name="close-circle" size={18} color="#fff" />
+                                        <MaterialCommunityIcons name="close-circle" size={18} color="#64748B" />
                                     </TouchableOpacity>
                                 )}
                             </View>
-                        </LinearGradient>
+                        </View>
 
                         {fetchingContacts ? (
                             <View style={styles.modalLoading}>
@@ -824,23 +919,20 @@ export default function AdminOverview({ navigation }) {
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.premiumNotificationModal}>
-                        <LinearGradient
-                            colors={['#4F46E5', '#3730A3']}
-                            style={styles.notificationModalHeader}
-                        >
+                        <View style={styles.modalSimpleHeader}>
                             <View style={styles.modalHeaderTopRow}>
                                 <View style={styles.modalHeaderTitleGroup}>
-                                    <Text style={styles.modalHeaderTitleMain}>System Logs</Text>
-                                    <Text style={styles.modalHeaderTitleSub}>Recent user registrations (24h)</Text>
+                                    <Text style={styles.modalSimpleTitleMain}>System Logs</Text>
+                                    <Text style={styles.modalSimpleTitleSub}>Recent user registrations (24h)</Text>
                                 </View>
                                 <TouchableOpacity
-                                    style={styles.modalHeaderCloseCircle}
+                                    style={styles.modalSimpleCloseCircle}
                                     onPress={() => setShowNewUsersModal(false)}
                                 >
-                                    <MaterialCommunityIcons name="close" size={18} color="#fff" />
+                                    <MaterialCommunityIcons name="close" size={20} color="#94A3B8" />
                                 </TouchableOpacity>
                             </View>
-                        </LinearGradient>
+                        </View>
 
                         <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
                             {newUsersList.length > 0 ? (
@@ -1010,93 +1102,85 @@ export default function AdminOverview({ navigation }) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: '#0F172A',
     },
     premiumHeaderContainer: {
         width: '100%',
     },
-    premiumHeaderGradient: {
-        paddingTop: Platform.OS === 'ios' ? 50 : 30,
-        paddingBottom: 24,
-        borderBottomLeftRadius: 35,
-        borderBottomRightRadius: 35,
-    },
-    headerSafeLayer: {
-        paddingHorizontal: 24,
-    },
-    headerTopNavigation: {
+    simpleHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 20,
+        paddingHorizontal: 24,
+        paddingTop: Platform.OS === 'ios' ? 60 : 40,
+        paddingBottom: 20,
     },
     greetingSection: {
         flex: 1,
     },
     greetingPrefix: {
         fontSize: 14,
-        color: 'rgba(255,255,255,0.7)',
+        color: '#94A3B8',
         fontWeight: '500',
     },
     adminDisplayName: {
-        fontSize: 22,
+        fontSize: 24,
         fontWeight: '800',
-        color: '#fff',
+        color: '#F8FAFC',
         letterSpacing: -0.5,
     },
     headerActionsBox: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        gap: 16,
     },
-    premiumHeaderIcon: {
+    simpleHeaderIcon: {
         width: 44,
         height: 44,
         borderRadius: 14,
-        backgroundColor: 'rgba(255,255,255,0.15)',
+        backgroundColor: 'rgba(30, 41, 59, 0.5)',
         alignItems: 'center',
         justifyContent: 'center',
-        position: 'relative',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
     },
-    premiumBadge: {
+    notificationDot: {
         position: 'absolute',
         top: 12,
         right: 12,
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: '#F43F5E',
-        borderWidth: 1.5,
-        borderColor: '#4F46E5',
+        backgroundColor: '#EF4444',
+        borderWidth: 2,
+        borderColor: '#0F172A',
     },
-    premiumAvatarBox: {
+    simpleAvatarBox: {
         width: 44,
         height: 44,
         borderRadius: 14,
-        backgroundColor: '#fff',
-        padding: 2,
-    },
-    avatarInnerGradient: {
-        flex: 1,
-        borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    immersiveSearchBox: {
+    searchContainer: {
+        paddingHorizontal: 24,
+        marginBottom: 10,
+    },
+    simpleSearchBox: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.15)',
-        borderRadius: 18,
+        backgroundColor: 'rgba(30, 41, 59, 0.5)',
+        borderRadius: 16,
         paddingHorizontal: 16,
-        height: 52,
+        height: 50,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        borderColor: 'rgba(255, 255, 255, 0.05)',
     },
-    immersiveSearchInput: {
+    simpleSearchInput: {
         flex: 1,
         marginLeft: 12,
-        fontSize: 16,
-        color: '#fff',
+        fontSize: 15,
+        color: '#F8FAFC',
         fontWeight: '500',
     },
     content: {
@@ -1109,19 +1193,83 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         gap: 12,
     },
+    chartSection: {
+        paddingHorizontal: 24,
+        marginTop: 10,
+    },
+    chartCard: {
+        backgroundColor: 'rgba(30, 41, 59, 0.5)',
+        borderRadius: 24,
+        padding: 20,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.2,
+        shadowRadius: 20,
+        elevation: 5,
+    },
+    chartHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 10,
+    },
+    chartTitle: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: '#F8FAFC',
+        letterSpacing: 0.5,
+    },
+    chartContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginVertical: 10,
+    },
+    chartFooter: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        marginTop: 10,
+        paddingTop: 15,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255, 255, 255, 0.05)',
+    },
+    chartLegendItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    legendDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+    },
+    legendLabel: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#94A3B8',
+    },
+    chartFooterText: {
+        fontSize: 11,
+        color: '#64748B',
+        fontWeight: '500',
+        fontStyle: 'italic',
+    },
     statCard: {
-        backgroundColor: '#fff',
+        backgroundColor: 'rgba(30, 41, 59, 0.7)',
         width: (width - 60) / 2,
         padding: 16,
         borderRadius: 24,
         flexDirection: 'row',
         justifyContent: 'space-between',
-        shadowColor: '#64748B',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
+        shadowOpacity: 0.1,
         shadowRadius: 12,
         elevation: 3,
         marginBottom: 4,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
     },
     statCardLeft: {
         flex: 1,
@@ -1137,14 +1285,14 @@ const styles = StyleSheet.create({
     statTitle: {
         fontSize: 11,
         fontWeight: '800',
-        color: '#1E293B',
+        color: '#94A3B8',
         letterSpacing: 0.5,
         marginBottom: 4,
     },
     statValue: {
         fontSize: 22,
         fontWeight: '800',
-        color: '#1E293B',
+        color: '#F8FAFC',
     },
     statCardRight: {
         alignItems: 'flex-end',
@@ -1194,7 +1342,7 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 18,
         fontWeight: '800',
-        color: '#1E293B',
+        color: '#F8FAFC',
     },
     viewAllText: {
         fontSize: 14,
@@ -1207,14 +1355,16 @@ const styles = StyleSheet.create({
     premiumActivityItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#fff',
+        backgroundColor: 'rgba(30, 41, 59, 0.5)',
         padding: 16,
         borderRadius: 20,
-        shadowColor: '#64748B',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
+        shadowOpacity: 0.1,
         shadowRadius: 10,
         elevation: 1,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
     },
     activityIconCircle: {
         width: 44,
@@ -1236,21 +1386,21 @@ const styles = StyleSheet.create({
     activityUserPremium: {
         fontSize: 15,
         fontWeight: '700',
-        color: '#1E293B',
+        color: '#F8FAFC',
     },
     activityTimePremium: {
         fontSize: 11,
-        color: '#1E293B',
+        color: '#94A3B8',
         fontWeight: '500',
     },
     activityActionPremium: {
         fontSize: 13,
-        color: '#1E293B',
+        color: '#CBD5E1',
         marginBottom: 2,
     },
     activityEmailPremium: {
         fontSize: 11,
-        color: '#1E293B',
+        color: '#64748B',
     },
     activityItem: {
         flexDirection: 'row',
@@ -1308,17 +1458,19 @@ const styles = StyleSheet.create({
     },
     premiumNavInner: {
         flexDirection: 'row',
-        backgroundColor: '#fff',
+        backgroundColor: 'rgba(30, 41, 59, 0.95)',
         borderRadius: 24,
         height: 70,
         alignItems: 'center',
         justifyContent: 'space-around',
         paddingHorizontal: 10,
-        shadowColor: '#1E293B',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.3,
         shadowRadius: 20,
         elevation: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
     },
     premiumNavItem: {
         alignItems: 'center',
@@ -1328,7 +1480,7 @@ const styles = StyleSheet.create({
     premiumNavText: {
         fontSize: 10,
         fontWeight: '700',
-        color: '#1E293B',
+        color: '#94A3B8',
         marginTop: 4,
     },
     premiumNavTextActive: {
@@ -1653,7 +1805,7 @@ const styles = StyleSheet.create({
     },
     // Premium Contacts Modal Styles
     premiumContactsModal: {
-        backgroundColor: '#fff',
+        backgroundColor: '#0F172A',
         borderRadius: 30,
         height: '85%',
         width: '100%',
@@ -1662,90 +1814,106 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.2,
+        shadowOpacity: 0.3,
         shadowRadius: 20,
         elevation: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
     },
-    modalPremiumHeader: {
-        padding: 24,
+    modalSimpleHeader: {
+        paddingHorizontal: 24,
         paddingTop: 30,
+        paddingBottom: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255, 255, 255, 0.05)',
     },
-    modalHeaderTopRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    modalHeaderTitleGroup: {
-        flex: 1,
-    },
-    modalHeaderTitleMain: {
+    modalSimpleTitleMain: {
         fontSize: 22,
         fontWeight: '800',
-        color: '#fff',
+        color: '#F8FAFC',
     },
-    modalHeaderTitleSub: {
+    modalSimpleTitleSub: {
         fontSize: 12,
-        color: 'rgba(255,255,255,0.7)',
+        color: '#94A3B8',
         fontWeight: '500',
     },
-    modalHeaderCloseCircle: {
+    modalSimpleCloseCircle: {
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: 'rgba(255,255,255,0.2)',
+        backgroundColor: 'rgba(30, 41, 59, 0.5)',
         alignItems: 'center',
         justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
     },
-    modalSearchWrapper: {
+    modalSimpleSearchWrapper: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.15)',
+        backgroundColor: 'rgba(30, 41, 59, 0.5)',
         borderRadius: 14,
         paddingHorizontal: 16,
         height: 48,
+        marginTop: 16,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        borderColor: 'rgba(255, 255, 255, 0.05)',
     },
-    modalSearchInputPremium: {
+    modalSimpleSearchInput: {
         flex: 1,
         marginLeft: 12,
         fontSize: 15,
-        color: '#fff',
+        color: '#F8FAFC',
+    },
+    alertSimpleTypeText: {
+        color: '#EF4444',
+        fontSize: 11,
+        fontWeight: '700',
+        letterSpacing: 0.5,
     },
     userContactsSectionPremium: {
-        marginBottom: 24,
+        marginBottom: 20,
+        backgroundColor: 'rgba(30, 41, 59, 0.3)',
+        borderRadius: 24,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
     },
     userSectionHeaderPremium: {
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 16,
+        paddingBottom: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255, 255, 255, 0.05)',
     },
     userMiniAvatarPremium: {
-        width: 44,
-        height: 44,
-        borderRadius: 14,
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 14,
+        marginRight: 12,
     },
     userMiniAvatarTextPremium: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: '800',
-        color: '#4F46E5',
+        color: '#3B82F6',
     },
     userSectionTitleInfo: {
         flex: 1,
     },
     userSectionNamePremium: {
-        fontSize: 17,
+        fontSize: 16,
         fontWeight: '700',
-        color: '#111827',
+        color: '#F8FAFC',
     },
     userContactCount: {
-        fontSize: 12,
-        color: '#6B7280',
-        fontWeight: '500',
+        fontSize: 11,
+        color: '#64748B',
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
     contactsListPremium: {
         gap: 12,
@@ -1753,25 +1921,21 @@ const styles = StyleSheet.create({
     contactCardPremium: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#fff',
-        borderRadius: 18,
-        padding: 16,
+        backgroundColor: 'rgba(15, 23, 42, 0.4)',
+        borderRadius: 16,
+        padding: 12,
+        marginBottom: 8,
         borderWidth: 1,
-        borderColor: '#F3F4F6',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
-        shadowRadius: 8,
-        elevation: 1,
+        borderColor: 'rgba(255, 255, 255, 0.03)',
     },
     contactCardIconBox: {
-        width: 44,
-        height: 44,
-        borderRadius: 12,
-        backgroundColor: '#F5F7FF',
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 14,
+        marginRight: 12,
     },
     contactCardInfoPremium: {
         flex: 1,
@@ -1779,16 +1943,16 @@ const styles = StyleSheet.create({
     contactCardNamePremium: {
         fontSize: 15,
         fontWeight: '700',
-        color: '#334155',
+        color: '#F8FAFC',
     },
     contactCardPhonePremium: {
         fontSize: 13,
-        color: '#64748B',
+        color: '#94A3B8',
         marginTop: 1,
     },
     contactRelationBadge: {
         alignSelf: 'flex-start',
-        backgroundColor: '#EEF2FF',
+        backgroundColor: 'rgba(79, 70, 229, 0.15)',
         paddingHorizontal: 8,
         paddingVertical: 2,
         borderRadius: 6,
@@ -1796,29 +1960,33 @@ const styles = StyleSheet.create({
     },
     contactRelationText: {
         fontSize: 10,
-        fontWeight: '700',
-        color: '#4F46E5',
+        fontWeight: '800',
+        color: '#818CF8',
         textTransform: 'uppercase',
     },
     contactCallAction: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: '#F0FDF4',
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
         alignItems: 'center',
         justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(16, 185, 129, 0.2)',
     },
     noContactsPlaceholder: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F9FAFB',
+        backgroundColor: 'rgba(255, 255, 255, 0.02)',
         padding: 16,
         borderRadius: 16,
         gap: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.03)',
     },
     noContactsTextPremium: {
         fontSize: 13,
-        color: '#94A3B8',
+        color: '#475569',
         fontWeight: '500',
     },
     emptyStateContainer: {
@@ -1871,7 +2039,7 @@ const styles = StyleSheet.create({
         elevation: 5,
     },
     premiumAlertModal: {
-        backgroundColor: '#fff',
+        backgroundColor: '#0F172A',
         borderRadius: 30,
         height: '85%',
         width: '100%',
@@ -1880,9 +2048,11 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.2,
+        shadowOpacity: 0.3,
         shadowRadius: 20,
         elevation: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
     },
     alertTypeIndicator: {
         flexDirection: 'row',
@@ -1914,11 +2084,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        backgroundColor: '#F8FAFC',
+        backgroundColor: 'rgba(30, 41, 59, 0.5)',
         borderRadius: 16,
         padding: 16,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
     },
     selectorLeftContent: {
         flexDirection: 'row',
@@ -1928,7 +2098,7 @@ const styles = StyleSheet.create({
     premiumSelectorText: {
         fontSize: 15,
         fontWeight: '600',
-        color: '#1E293B',
+        color: '#F8FAFC',
     },
     premiumDropdownListContainer: {
         backgroundColor: '#fff',
@@ -1980,15 +2150,15 @@ const styles = StyleSheet.create({
         color: '#64748B',
     },
     premiumTextInputWrapper: {
-        backgroundColor: '#F8FAFC',
+        backgroundColor: 'rgba(30, 41, 59, 0.5)',
         borderRadius: 20,
         padding: 16,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
     },
     premiumAlertTextInput: {
         fontSize: 15,
-        color: '#1E293B',
+        color: '#F8FAFC',
         minHeight: 120,
         lineHeight: 22,
     },
@@ -2028,15 +2198,17 @@ const styles = StyleSheet.create({
         opacity: 0.7,
     },
     premiumProfileModal: {
-        backgroundColor: '#fff',
+        backgroundColor: '#0F172A',
         width: '85%',
         borderRadius: 30,
         overflow: 'hidden',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 20 },
-        shadowOpacity: 0.2,
+        shadowOpacity: 0.3,
         shadowRadius: 30,
         elevation: 15,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
     },
     profileModalHeader: {
         paddingTop: 40,
@@ -2092,7 +2264,7 @@ const styles = StyleSheet.create({
     adminPremiumName: {
         fontSize: 22,
         fontWeight: '800',
-        color: '#111827',
+        color: '#F8FAFC',
         marginBottom: 6,
     },
     premiumRoleTag: {
@@ -2118,11 +2290,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         padding: 12,
-        backgroundColor: '#F9FAFB',
+        backgroundColor: 'rgba(30, 41, 59, 0.5)',
         borderRadius: 16,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: '#F1F5F9',
+        borderColor: 'rgba(255, 255, 255, 0.05)',
     },
     detailIconBox: {
         width: 40,
@@ -2144,7 +2316,7 @@ const styles = StyleSheet.create({
     detailValue: {
         fontSize: 14,
         fontWeight: '700',
-        color: '#334155',
+        color: '#F8FAFC',
         marginTop: 1,
     },
     profileActionFooter: {
