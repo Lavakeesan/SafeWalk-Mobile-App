@@ -9,6 +9,7 @@ import {
   Dimensions,
   ScrollView,
   Modal,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -167,33 +168,54 @@ export default function Dashboard({ navigation }) {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
 
-      {/* Header */}
-      <LinearGradient
-        colors={['#4F46E5', '#7C3AED']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.greeting}>Welcome back,</Text>
-            <Text style={styles.userName}>{user?.displayName || 'User'}</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.profileButton}
+      {/* Modern Header */}
+      <View style={styles.header}>
+        <Text style={styles.logoText}>SafeWalk</Text>
+        <View style={styles.headerRight}>
+          <TouchableOpacity style={styles.iconButton}>
+            <MaterialCommunityIcons name="bell-outline" size={24} color="#F8FAFC" />
+            <View style={styles.notifBadge} />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.headerAvatar}
             onPress={() => navigation.navigate('Profile')}
           >
-            <View style={styles.profileAvatar}>
-              <Text style={styles.profileAvatarText}>
-                {user?.displayName?.charAt(0)?.toUpperCase() || 'U'}
-              </Text>
-            </View>
+            <View style={styles.avatarGlow} />
+            <Text style={styles.avatarInitial}>
+              {user?.displayName?.charAt(0)?.toUpperCase() || 'U'}
+            </Text>
           </TouchableOpacity>
         </View>
+      </View>
 
-        {/* Start Walk Button */}
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.contentContainer}
+      >
+        {/* System Status Card */}
+        <View style={styles.statusCardWrapper}>
+          <LinearGradient
+            colors={['rgba(16, 185, 129, 0.1)', 'rgba(0, 242, 255, 0.05)']}
+            style={styles.statusCard}
+          >
+            <View style={styles.statusIconBox}>
+              <MaterialCommunityIcons name="shield-check" size={24} color="#10B981" />
+            </View>
+            <View style={styles.statusInfo}>
+              <Text style={styles.statusTitle}>System Secure</Text>
+              <Text style={styles.statusSubtitle}>GPS and Guardian network active</Text>
+            </View>
+            <View style={styles.pulseContainer}>
+              <View style={styles.pulseCircle} />
+              <View style={styles.pulseCircleInner} />
+            </View>
+          </LinearGradient>
+        </View>
+
+        {/* Primary Start Walk Button */}
         <TouchableOpacity
-          style={styles.startWalkButton}
+          style={styles.mainStartButton}
           onPress={() => {
             if (contacts.length === 0) {
               navigation.navigate('TrustedContacts');
@@ -201,87 +223,112 @@ export default function Dashboard({ navigation }) {
               setShowContactModal(true);
             }
           }}
-          activeOpacity={0.9}
+          activeOpacity={0.8}
         >
-          <View style={styles.startWalkButtonContent}>
-            <View style={styles.startWalkIcon}>
-              <MaterialCommunityIcons name="walk" size={32} color="#4F46E5" />
-            </View>
-            <View style={styles.startWalkText}>
-              <Text style={styles.startWalkTitle}>Start Walk</Text>
-              <Text style={styles.startWalkSubtitle}>
-                {contacts.length === 0 ? 'Add a contact first' : 'Select a trusted contact'}
-              </Text>
-            </View>
-            <MaterialCommunityIcons name="arrow-right-circle" size={40} color="#4F46E5" />
-          </View>
+          <LinearGradient
+            colors={['#2563EB', '#00F2FF']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.mainStartGradient}
+          >
+            <MaterialCommunityIcons name="navigation-variant-outline" size={24} color="#fff" style={styles.startIcon} />
+            <Text style={styles.mainStartText}>Start Walk</Text>
+          </LinearGradient>
         </TouchableOpacity>
-      </LinearGradient>
 
-      <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.contentContainer}
-      >
-        {/* Quick Actions */}
+        {/* Trusted Contacts Horizontal List */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <FlatList
-            data={quickActions}
-            renderItem={renderQuickAction}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false}
-          />
-        </View>
-
-        {/* Recent Contacts */}
-        {contacts.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Recent Contacts</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('TrustedContacts')}>
-                <Text style={styles.seeAllText}>See All</Text>
-              </TouchableOpacity>
-            </View>
-            <FlatList
-              data={contacts.slice(0, 3)}
-              renderItem={renderContact}
-              keyExtractor={(item) => item.id}
-              scrollEnabled={false}
-            />
-          </View>
-        )}
-
-        {/* Recent History */}
-        {history.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Recent Sessions</Text>
-            </View>
-            <FlatList
-              data={history.slice(0, 5)}
-              renderItem={renderHistoryItem}
-              keyExtractor={(item) => item.id}
-              scrollEnabled={false}
-            />
-          </View>
-        )}
-
-        {/* Empty State */}
-        {contacts.length === 0 && (
-          <View style={styles.emptyState}>
-            <MaterialCommunityIcons name="account-group-outline" size={80} color="#E5E7EB" />
-            <Text style={styles.emptyTitle}>No Contacts Yet</Text>
-            <Text style={styles.emptyText}>Add trusted contacts to start walk sessions</Text>
-            <TouchableOpacity
-              style={styles.emptyButton}
-              onPress={() => navigation.navigate('TrustedContacts')}
-            >
-              <Text style={styles.emptyButtonText}>Add Contact</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Trusted Contacts</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('TrustedContacts')}>
+              <Text style={styles.seeAllText}>View All</Text>
             </TouchableOpacity>
           </View>
-        )}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalContacts}>
+            {contacts.map((contact) => (
+              <TouchableOpacity key={contact.id} style={styles.contactCircleItem}>
+                <View style={[styles.contactCircleAvatar, { borderColor: '#00F2FF' }]}>
+                  <Text style={styles.contactInitialText}>{contact.name?.charAt(0)}</Text>
+                </View>
+                <Text style={styles.contactCircleName}>{contact.name.split(' ')[0]}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity 
+              style={styles.contactCircleItem}
+              onPress={() => navigation.navigate('TrustedContacts')}
+            >
+              <View style={styles.addContactCircle}>
+                <MaterialCommunityIcons name="plus" size={24} color="#F8FAFC" />
+              </View>
+              <Text style={styles.contactCircleName}>Add</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+
+        {/* Recent Activity Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Recent Activity</Text>
+          <View style={styles.activityList}>
+            {history.length > 0 ? (
+              history.slice(0, 3).map((item) => (
+                <TouchableOpacity key={item.id} style={styles.activityCard}>
+                  <View style={styles.activityIconBox}>
+                    <MaterialCommunityIcons name="history" size={20} color="#818CF8" />
+                  </View>
+                  <View style={styles.activityInfo}>
+                    <Text style={styles.activityTitle}>{item.contact?.name || 'Walk Session'}</Text>
+                    <Text style={styles.activitySubtitle}>
+                      {new Date(item.startedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} • {item.distance || '0.0'} km
+                    </Text>
+                  </View>
+                  <MaterialCommunityIcons name="chevron-right" size={20} color="#475569" />
+                </TouchableOpacity>
+              ))
+            ) : (
+              <View style={styles.emptyActivityBox}>
+                <Text style={styles.emptyActivityText}>No recent sessions</Text>
+              </View>
+            )}
+          </View>
+        </View>
       </ScrollView>
+
+      {/* SOS Button */}
+      <TouchableOpacity style={styles.sosButton} activeOpacity={0.9}>
+        <LinearGradient
+          colors={['#FF4B2B', '#FF416C']}
+          style={styles.sosGradient}
+        >
+          <Text style={styles.sosText}>SOS</Text>
+          <Text style={styles.sosSubText}>HOLD</Text>
+        </LinearGradient>
+      </TouchableOpacity>
+
+      {/* Bottom Tab Bar (Simulated) */}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('TrustedContacts')}>
+          <MaterialCommunityIcons name="account-group-outline" size={24} color="#94A3B8" />
+          <Text style={styles.navText}>Contacts</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('History')}>
+          <MaterialCommunityIcons name="history" size={24} color="#94A3B8" />
+          <Text style={styles.navText}>History</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItemActive}>
+          <View style={styles.navActiveCircle}>
+            <MaterialCommunityIcons name="walk" size={28} color="#00F2FF" />
+          </View>
+          <Text style={[styles.navText, { color: '#00F2FF' }]}>Start Walk</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem}>
+          <MaterialCommunityIcons name="cog-outline" size={24} color="#94A3B8" />
+          <Text style={styles.navText}>Settings</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Profile')}>
+          <MaterialCommunityIcons name="account-outline" size={24} color="#94A3B8" />
+          <Text style={styles.navText}>Profile</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Select Contact Modal */}
       <Modal
@@ -323,258 +370,336 @@ export default function Dashboard({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#010A1A',
   },
   header: {
-    paddingTop: 60,
-    paddingBottom: 24,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-  },
-  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    paddingHorizontal: 24,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 20,
   },
-  greeting: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontWeight: '500',
+  logoText: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#F8FAFC',
+    letterSpacing: -1,
   },
-  userName: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#fff',
-    marginTop: 4,
-  },
-  profileButton: {
-    padding: 2,
-  },
-  profileAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  profileAvatarText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  startWalkButton: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  startWalkButtonContent: {
+  headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 16,
   },
-  startWalkIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#EEF2FF',
+  iconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(30, 41, 59, 0.5)',
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
   },
-  startWalkText: {
-    flex: 1,
-    marginLeft: 16,
+  notifBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#00F2FF',
+    borderWidth: 2,
+    borderColor: '#010A1A',
   },
-  startWalkTitle: {
-    fontSize: 20,
+  headerAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#1E293B',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  avatarGlow: {
+    position: 'absolute',
+    top: -2,
+    left: -2,
+    right: -2,
+    bottom: -2,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: '#00F2FF',
+    opacity: 0.5,
+  },
+  avatarInitial: {
+    fontSize: 18,
     fontWeight: '800',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  startWalkSubtitle: {
-    fontSize: 13,
-    color: '#6B7280',
+    color: '#00F2FF',
   },
   content: {
     flex: 1,
   },
   contentContainer: {
-    paddingBottom: 40,
+    paddingBottom: 120,
+  },
+  statusCardWrapper: {
+    paddingHorizontal: 24,
+    marginBottom: 24,
+  },
+  statusCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 242, 255, 0.3)',
+  },
+  statusIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusInfo: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  statusTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#F8FAFC',
+    letterSpacing: 0.5,
+  },
+  statusSubtitle: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginTop: 2,
+  },
+  pulseContainer: {
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pulseCircle: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#10B981',
+    opacity: 0.3,
+    transform: [{ scale: 1.5 }],
+  },
+  pulseCircleInner: {
+    position: 'absolute',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
+  },
+  mainStartButton: {
+    paddingHorizontal: 24,
+    marginBottom: 32,
+  },
+  mainStartGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    borderRadius: 30,
+    gap: 12,
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  mainStartText: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#fff',
+    letterSpacing: 0.5,
+  },
+  startIcon: {
+    transform: [{ rotate: '45deg' }],
   },
   section: {
-    marginTop: 24,
-    paddingHorizontal: 20,
+    marginBottom: 32,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 24,
     marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: '800',
+    color: '#F8FAFC',
   },
   seeAllText: {
     fontSize: 14,
+    fontWeight: '700',
+    color: '#00F2FF',
+  },
+  horizontalContacts: {
+    paddingLeft: 24,
+  },
+  contactCircleItem: {
+    alignItems: 'center',
+    marginRight: 20,
+    width: 70,
+  },
+  contactCircleAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0F172A',
+    marginBottom: 8,
+  },
+  addContactCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(30, 41, 59, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    marginBottom: 8,
+  },
+  contactInitialText: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#F8FAFC',
+  },
+  contactCircleName: {
+    fontSize: 12,
     fontWeight: '600',
-    color: '#4F46E5',
+    color: '#94A3B8',
   },
-  actionCard: {
-    marginBottom: 12,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+  activityList: {
+    paddingHorizontal: 24,
+    gap: 12,
   },
-  actionGradient: {
+  activityCard: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
     padding: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
-  actionIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  activityIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(129, 140, 248, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  actionContent: {
+  activityInfo: {
     flex: 1,
     marginLeft: 16,
   },
-  actionTitle: {
+  activityTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#fff',
-    marginBottom: 4,
+    color: '#F8FAFC',
   },
-  actionSubtitle: {
+  activitySubtitle: {
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: '#64748B',
+    marginTop: 2,
   },
-  contactCard: {
-    flexDirection: 'row',
+  emptyActivityBox: {
+    paddingVertical: 20,
     alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
   },
-  contactAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#EEF2FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  contactAvatarText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#4F46E5',
-  },
-  contactInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  contactName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 2,
-  },
-  contactPhone: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  startButton: {
-    padding: 4,
-  },
-  historyCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  historyIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3E8FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  historyContent: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  historyName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 2,
-  },
-  historyTime: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  historyStatus: {
-    padding: 4,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 40,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyText: {
+  emptyActivityText: {
+    color: '#475569',
     fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 24,
   },
-  emptyButton: {
-    backgroundColor: '#4F46E5',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
+  sosButton: {
+    position: 'absolute',
+    bottom: 100,
+    right: 20,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    overflow: 'hidden',
+    shadowColor: '#FF4B2B',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.4,
+    shadowRadius: 15,
+    elevation: 10,
   },
-  emptyButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
+  sosGradient: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sosText: {
+    fontSize: 18,
+    fontWeight: '900',
     color: '#fff',
+  },
+  sosSubText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#fff',
+    opacity: 0.8,
+  },
+  bottomNav: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 80,
+    backgroundColor: 'rgba(1, 10, 26, 0.95)',
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  navItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navItemActive: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -20,
+  },
+  navActiveCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#0F172A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#00F2FF',
+    marginBottom: 4,
+    shadowColor: '#00F2FF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  navText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#94A3B8',
+    marginTop: 4,
   },
   modalContainer: {
     flex: 1,
@@ -582,60 +707,63 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
   },
   modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: '#0F172A',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
     maxHeight: '70%',
+    paddingBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 20,
+    padding: 24,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: '800',
+    color: '#F8FAFC',
   },
   modalSubtitle: {
     fontSize: 14,
-    color: '#6B7280',
-    paddingHorizontal: 20,
-    paddingTop: 12,
+    color: '#94A3B8',
+    paddingHorizontal: 24,
+    paddingTop: 16,
     paddingBottom: 8,
   },
   modalList: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     paddingBottom: 20,
   },
   modalContactCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: 'rgba(30, 41, 59, 0.5)',
     padding: 16,
-    borderRadius: 16,
+    borderRadius: 20,
     marginTop: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   modalContactAvatar: {
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: 'rgba(0, 242, 255, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalContactAvatarText: {
     fontSize: 22,
-    fontWeight: '700',
-    color: '#4F46E5',
+    fontWeight: '800',
+    color: '#00F2FF',
   },
   modalContactInfo: {
     flex: 1,
@@ -644,11 +772,11 @@ const styles = StyleSheet.create({
   modalContactName: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#111827',
+    color: '#F8FAFC',
     marginBottom: 4,
   },
   modalContactPhone: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#94A3B8',
   },
 });

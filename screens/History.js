@@ -8,6 +8,7 @@ import {
     StatusBar,
     Dimensions,
     Alert,
+    Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -48,52 +49,54 @@ export default function History({ navigation }) {
     const renderHistoryItem = ({ item }) => (
         <View style={styles.historyCard}>
             <View style={styles.cardHeader}>
-                <View style={styles.contactAvatar}>
-                    <Text style={styles.avatarText}>
+                <View style={[styles.avatarContainer, { backgroundColor: item.contact?.name === 'Abinayan' ? '#3B1F4D' : '#1E293B' }]}>
+                    <Text style={[styles.avatarText, { color: item.contact?.name === 'Abinayan' ? '#A855F7' : '#3B82F6' }]}>
                         {item.contact?.name?.charAt(0)?.toUpperCase() || 'C'}
                     </Text>
                 </View>
-                <View style={styles.headerInfo}>
+                
+                <View style={styles.nameSection}>
                     <Text style={styles.contactName}>{item.contact?.name || 'Unknown Contact'}</Text>
                     <Text style={styles.sessionDate}>
                         {new Date(item.startedAt).toLocaleDateString(undefined, {
                             weekday: 'short',
-                            year: 'numeric',
-                            month: 'short',
                             day: 'numeric',
-                        })}
+                            month: 'short',
+                            year: 'numeric',
+                        }).toUpperCase()}
                     </Text>
                 </View>
-                <View style={styles.headerActions}>
-                    <View style={[styles.statusBadge, item.status === 'ended' ? styles.statusEnded : styles.statusActive]}>
-                        <Text style={styles.statusText}>{String(item.status || 'unknown').toUpperCase()}</Text>
+
+                <View style={styles.badgeActions}>
+                    <View style={styles.endedBadge}>
+                        <Text style={styles.endedBadgeText}>ENDED</Text>
                     </View>
                     <TouchableOpacity
-                        style={styles.deleteButton}
+                        style={styles.deleteIconBtn}
                         onPress={() => handleDelete(item.id)}
                     >
-                        <MaterialCommunityIcons name="delete-outline" size={22} color="#EF4444" />
+                        <MaterialCommunityIcons name="delete-outline" size={20} color="#475569" />
                     </TouchableOpacity>
                 </View>
             </View>
 
-            <View style={styles.cardBody}>
-                <View style={styles.detailItem}>
-                    <MaterialCommunityIcons name="clock-outline" size={18} color="#6B7280" />
-                    <Text style={styles.detailText}>
-                        {`${new Date(item.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${item.endedAt ? new Date(item.endedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Ongoing'}`}
-                    </Text>
+            <View style={styles.cardDivider} />
+
+            <View style={styles.cardFooter}>
+                <View style={styles.footerRow}>
+                    <View style={styles.footerItem}>
+                        <MaterialCommunityIcons name="clock-outline" size={18} color="#94A3B8" />
+                        <Text style={styles.footerText}>
+                            {`${new Date(item.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })} - ${item.endedAt ? new Date(item.endedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : 'Ongoing'}`}
+                        </Text>
+                    </View>
+                    <Text style={styles.durationNote}>Duration: {formatDuration(item.startedAt, item.endedAt)}</Text>
                 </View>
-                <View style={styles.detailItem}>
-                    <MaterialCommunityIcons name="timer-outline" size={18} color="#6B7280" />
-                    <Text style={styles.detailText}>
-                        {`Duration: ${formatDuration(item.startedAt, item.endedAt)}`}
-                    </Text>
-                </View>
+
                 {item.startLocation && (
-                    <View style={styles.detailItem}>
-                        <MaterialCommunityIcons name="map-marker-radius" size={18} color="#6B7280" />
-                        <Text style={styles.detailText} numberOfLines={1}>
+                    <View style={styles.footerItem}>
+                        <MaterialCommunityIcons name="map-marker-outline" size={18} color="#94A3B8" />
+                        <Text style={styles.footerText}>
                             {`Started at: ${item.startLocation.lat.toFixed(4)}, ${item.startLocation.lng.toFixed(4)}`}
                         </Text>
                     </View>
@@ -105,56 +108,51 @@ export default function History({ navigation }) {
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" />
-            <LinearGradient
-                colors={['#8B5CF6', '#6D28D9']}
-                style={styles.header}
-            >
-                <View style={styles.headerContent}>
-                    <TouchableOpacity
-                        style={styles.backButton}
-                        onPress={() => navigation.goBack()}
-                    >
-                        <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
-                    </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Walking History</Text>
-                    <View style={{ width: 40 }} />
-                </View>
-                <View style={styles.statsRow}>
-                    <View style={styles.statBox}>
+            
+            <View style={styles.header}>
+                <TouchableOpacity
+                    style={styles.backButton}
+                    onPress={() => navigation.goBack()}
+                >
+                    <MaterialCommunityIcons name="chevron-left" size={28} color="#F8FAFC" />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>Walking History</Text>
+            </View>
+
+            <View style={styles.mainContent}>
+                <LinearGradient
+                    colors={['#8B5CF6', '#7C3AED']}
+                    style={styles.statsCard}
+                >
+                    <View style={styles.statGroup}>
+                        <Text style={styles.statLabel}>TOTAL WALKS</Text>
                         <Text style={styles.statValue}>{history.length}</Text>
-                        <Text style={styles.statLabel}>Total Walks</Text>
                     </View>
-                    <View style={styles.statDivider} />
-                    <View style={styles.statBox}>
+                    <View style={styles.statVerticalDivider} />
+                    <View style={styles.statGroup}>
+                        <Text style={styles.statLabel}>COMPLETED</Text>
                         <Text style={styles.statValue}>
                             {history.filter(h => h.status === 'ended').length}
                         </Text>
-                        <Text style={styles.statLabel}>Completed</Text>
                     </View>
-                </View>
-            </LinearGradient>
+                </LinearGradient>
 
-            {history.length > 0 ? (
-                <FlatList
-                    data={history}
-                    renderItem={renderHistoryItem}
-                    keyExtractor={(item) => item.id}
-                    contentContainerStyle={styles.listContent}
-                    showsVerticalScrollIndicator={false}
-                />
-            ) : (
-                <View style={styles.emptyContainer}>
-                    <MaterialCommunityIcons name="history" size={80} color="#E5E7EB" />
-                    <Text style={styles.emptyTitle}>No History Yet</Text>
-                    <Text style={styles.emptySubtitle}>Your completed walks will appear here.</Text>
-                    <TouchableOpacity
-                        style={styles.startButton}
-                        onPress={() => navigation.navigate('Dashboard')}
-                    >
-                        <Text style={styles.startButtonText}>Back to Dashboard</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
+                {history.length > 0 ? (
+                    <FlatList
+                        data={history}
+                        renderItem={renderHistoryItem}
+                        keyExtractor={(item) => item.id}
+                        contentContainerStyle={styles.listContainer}
+                        showsVerticalScrollIndicator={false}
+                    />
+                ) : (
+                    <View style={styles.emptyContainer}>
+                        <MaterialCommunityIcons name="history" size={80} color="#1E293B" />
+                        <Text style={styles.emptyTitle}>No History Yet</Text>
+                        <Text style={styles.emptySubtitle}>Your completed walks will appear here.</Text>
+                    </View>
+                )}
+            </View>
         </View>
     );
 }
@@ -162,178 +160,169 @@ export default function History({ navigation }) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#010A1A',
     },
     header: {
-        paddingTop: 60,
-        paddingBottom: 24,
-        paddingHorizontal: 20,
-        borderBottomLeftRadius: 30,
-        borderBottomRightRadius: 30,
-    },
-    headerContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
+        paddingTop: Platform.OS === 'ios' ? 60 : 40,
+        paddingHorizontal: 20,
         marginBottom: 20,
     },
-    headerTitle: {
-        fontSize: 20,
-        fontWeight: '800',
-        color: '#fff',
-    },
     backButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(30, 41, 59, 0.5)',
         alignItems: 'center',
         justifyContent: 'center',
+        marginRight: 16,
     },
-    statsRow: {
+    headerTitle: {
+        fontSize: 24,
+        fontWeight: '900',
+        color: '#F8FAFC',
+    },
+    mainContent: {
+        flex: 1,
+        paddingHorizontal: 20,
+    },
+    statsCard: {
         flexDirection: 'row',
+        padding: 24,
+        borderRadius: 32,
+        marginBottom: 24,
         alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.15)',
-        borderRadius: 20,
-        paddingVertical: 15,
     },
-    statBox: {
+    statGroup: {
         flex: 1,
         alignItems: 'center',
     },
-    statValue: {
-        fontSize: 22,
-        fontWeight: '800',
-        color: '#fff',
-    },
     statLabel: {
         fontSize: 12,
-        color: 'rgba(255, 255, 255, 0.8)',
-        marginTop: 2,
+        fontWeight: '700',
+        color: 'rgba(255, 255, 255, 0.6)',
+        letterSpacing: 1,
     },
-    statDivider: {
+    statValue: {
+        fontSize: 40,
+        fontWeight: '900',
+        color: '#fff',
+        marginTop: 4,
+    },
+    statVerticalDivider: {
         width: 1,
-        height: '60%',
-        backgroundColor: 'rgba(255, 255, 255, 0.3)',
+        height: 40,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
     },
-    listContent: {
-        padding: 20,
+    listContainer: {
         paddingBottom: 40,
     },
     historyCard: {
-        backgroundColor: '#fff',
-        borderRadius: 20,
-        padding: 16,
+        backgroundColor: '#0B1526',
+        borderRadius: 28,
+        padding: 20,
         marginBottom: 16,
         borderWidth: 1,
-        borderColor: '#E5E7EB',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 3,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
     },
     cardHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 16,
     },
-    contactAvatar: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: '#F3E8FF',
+    avatarContainer: {
+        width: 52,
+        height: 52,
+        borderRadius: 18,
         alignItems: 'center',
         justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
     },
     avatarText: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#7C3AED',
+        fontSize: 22,
+        fontWeight: '900',
     },
-    headerInfo: {
+    nameSection: {
         flex: 1,
-        marginLeft: 12,
+        marginLeft: 16,
     },
     contactName: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#111827',
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#F8FAFC',
     },
     sessionDate: {
-        fontSize: 13,
-        color: '#6B7280',
-        marginTop: 2,
-    },
-    statusBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 8,
-    },
-    statusEnded: {
-        backgroundColor: '#D1FAE5',
-    },
-    statusActive: {
-        backgroundColor: '#FEF3C7',
-    },
-    statusText: {
         fontSize: 10,
-        fontWeight: '800',
-        color: '#065F46',
+        fontWeight: '700',
+        color: '#64748B',
+        marginTop: 2,
+        letterSpacing: 0.5,
     },
-    headerActions: {
+    badgeActions: {
         flexDirection: 'row',
         alignItems: 'center',
     },
-    deleteButton: {
-        marginLeft: 8,
+    endedBadge: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 10,
+        backgroundColor: 'rgba(16, 185, 129, 0.05)',
+        borderWidth: 1,
+        borderColor: 'rgba(16, 185, 129, 0.3)',
+        marginRight: 12,
+    },
+    endedBadgeText: {
+        fontSize: 10,
+        fontWeight: '900',
+        color: '#10B981',
+    },
+    deleteIconBtn: {
         padding: 4,
     },
-    cardBody: {
-        borderTopWidth: 1,
-        borderTopColor: '#F3F4F6',
-        paddingTop: 12,
+    cardDivider: {
+        height: 1,
+        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        marginVertical: 16,
     },
-    detailItem: {
+    cardFooter: {
+        gap: 12,
+    },
+    footerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    footerItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 8,
+        gap: 8,
     },
-    detailText: {
+    footerText: {
         fontSize: 14,
-        color: '#4B5563',
-        marginLeft: 8,
-        fontWeight: '500',
+        fontWeight: '600',
+        color: '#94A3B8',
+    },
+    durationNote: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#475569',
     },
     emptyContainer: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 40,
+        paddingBottom: 100,
     },
     emptyTitle: {
         fontSize: 20,
-        fontWeight: '700',
-        color: '#111827',
+        fontWeight: '800',
+        color: '#F8FAFC',
         marginTop: 16,
     },
     emptySubtitle: {
         fontSize: 14,
-        color: '#6B7280',
-        textAlign: 'center',
+        color: '#64748B',
         marginTop: 8,
-        marginBottom: 24,
-    },
-    startButton: {
-        backgroundColor: '#7C3AED',
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        borderRadius: 12,
-    },
-    startButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#fff',
     },
 });

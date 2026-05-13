@@ -13,7 +13,9 @@ import {
     ActivityIndicator,
     Dimensions,
     KeyboardAvoidingView,
+    Image,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
@@ -21,8 +23,9 @@ import { useAuth } from '../context/AuthContext';
 const { width } = Dimensions.get('window');
 
 export default function Profile({ navigation }) {
-    const { user, logout, updateUser, updatePassword } = useAuth();
+    const { user, logout, updateUser, updatePassword, updateProfilePhoto } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
+    const [uploadingPhoto, setUploadingPhoto] = useState(false);
     const [isChangingPassword, setIsChangingPassword] = useState(false);
     const [newName, setNewName] = useState(user?.displayName || '');
     const [newEmail, setNewEmail] = useState(user?.email || '');
@@ -31,6 +34,39 @@ export default function Profile({ navigation }) {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [updating, setUpdating] = useState(false);
     const [passwordUpdating, setPasswordUpdating] = useState(false);
+
+    const handlePickImage = async () => {
+        try {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission Denied', 'We need permission to access your gallery to change profile photo.');
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images'],
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.7,
+            });
+
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                setUploadingPhoto(true);
+                const uploadResult = await updateProfilePhoto(result.assets[0].uri);
+                setUploadingPhoto(false);
+
+                if (uploadResult.success) {
+                    Alert.alert('Success', 'Profile photo updated successfully!');
+                } else {
+                    Alert.alert('Upload Failed', uploadResult.error || 'Could not upload image');
+                }
+            }
+        } catch (error) {
+            setUploadingPhoto(false);
+            console.error('Pick Image Error:', error);
+            Alert.alert('Error', 'An unexpected error occurred while picking the image.');
+        }
+    };
 
     const handleUpdateProfile = async () => {
         if (!newName.trim()) {
@@ -165,320 +201,219 @@ export default function Profile({ navigation }) {
         <View style={styles.container}>
             <StatusBar barStyle="light-content" />
 
+            <View style={styles.header}>
+                <TouchableOpacity
+                    style={styles.backButton}
+                    onPress={() => navigation.goBack()}
+                >
+                    <MaterialCommunityIcons name="chevron-left" size={28} color="#F8FAFC" />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>Account Profile</Text>
+                <View style={{ width: 44 }} />
+            </View>
+
             <ScrollView
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                {/* Premium Header */}
-                <View style={styles.premiumHeaderBox}>
-                    <LinearGradient
-                        colors={['#4F46E5', '#7C3AED']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.premiumHeaderGradient}
-                    >
-                        <View style={styles.headerTopBar}>
-                            <TouchableOpacity
-                                style={styles.premiumBackButton}
-                                onPress={() => navigation.goBack()}
-                            >
-                                <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
-                            </TouchableOpacity>
-                            <Text style={styles.premiumHeaderTitle}>Account Profile</Text>
-                            <View style={{ width: 44 }} />
-                        </View>
-
-                        <View style={styles.heroProfileSection}>
-                            <View style={styles.premiumAvatarContainer}>
-                                <LinearGradient
-                                    colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.05)']}
-                                    style={styles.avatarRing}
-                                >
-                                    <View style={styles.avatarInner}>
-                                        <Text style={styles.avatarInitialText}>
-                                            {user?.displayName?.charAt(0)?.toUpperCase() || 'U'}
-                                        </Text>
-                                    </View>
-                                </LinearGradient>
-                                <View style={styles.activeStatusBadge} />
-                            </View>
-
-                            <View style={styles.heroNameGroup}>
-                                <Text style={styles.heroNameText}>{user?.displayName || 'Safe User'}</Text>
-                            </View>
-
-                            <TouchableOpacity
-                                style={styles.premiumEditFab}
-                                onPress={() => {
-                                    setNewName(user?.displayName || '');
-                                    setNewEmail(user?.email || '');
-                                    setNewPhone(user?.phone || '');
-                                    setIsEditing(true);
-                                }}
-                            >
-                                <LinearGradient
-                                    colors={['rgba(255,255,255,0.25)', 'rgba(255,255,255,0.1)']}
-                                    style={styles.glassButtonInner}
-                                >
-                                    <MaterialCommunityIcons name="account-edit" size={18} color="#fff" />
-                                    <Text style={styles.glassButtonText}>Edit Details</Text>
-                                </LinearGradient>
-                            </TouchableOpacity>
-                        </View>
-                    </LinearGradient>
-                </View>
-
-                {/* Account Details Section */}
-                <View style={styles.contentSection}>
-                    <View style={styles.sectionHeaderRow}>
-                        <MaterialCommunityIcons name="information-outline" size={18} color="#94A3B8" />
-                    </View>
-
-                    {profileOptions.map((option) => (
-                        <View key={option.id} style={styles.premiumOptionCard}>
-                            <View style={[styles.optionIconBox, { backgroundColor: option.color + '15' }]}>
-                                <MaterialCommunityIcons name={option.icon} size={22} color={option.color} />
-                            </View>
-                            <View style={styles.optionInfoBox}>
-                                <Text style={styles.optionLabelText}>{option.title}</Text>
-                                <Text style={styles.optionValueText}>{option.value}</Text>
-                            </View>
-                        </View>
-                    ))}
-
-                    <View style={[styles.sectionHeaderRow, { marginTop: 24 }]}>
-                        <Text style={styles.premiumSectionTitle}>Privacy & Security</Text>
-                    </View>
-
-                    <TouchableOpacity
-                        style={styles.premiumActionCard}
-                        onPress={() => setIsChangingPassword(true)}
-                        activeOpacity={0.7}
-                    >
-                        <View style={[styles.actionIconBox, { backgroundColor: '#F59E0B15' }]}>
-                            <MaterialCommunityIcons name="lock-reset" size={22} color="#F59E0B" />
-                        </View>
-                        <Text style={styles.actionLabelText}>Update Security Password</Text>
-                        <MaterialCommunityIcons name="chevron-right" size={20} color="#94A3B8" />
-                    </TouchableOpacity>
-
-                    {actionOptions.map((option) => (
-                        <TouchableOpacity
-                            key={option.id}
-                            style={styles.premiumActionCard}
-                            onPress={option.onPress}
-                            activeOpacity={0.7}
-                        >
-                            <View style={[styles.actionIconBox, { backgroundColor: option.color + '15' }]}>
-                                <MaterialCommunityIcons name={option.icon} size={22} color={option.color} />
-                            </View>
-                            <Text style={styles.actionLabelText}>{option.title}</Text>
-                            <MaterialCommunityIcons name="chevron-right" size={20} color="#94A3B8" />
-                        </TouchableOpacity>
-                    ))}
-
-                    {/* Elite Sign Out Zone */}
-                    <TouchableOpacity
-                        style={styles.premiumSignOutCard}
-                        onPress={handleSignOut}
-                        activeOpacity={0.8}
+                {/* Hero Section */}
+                <View style={styles.heroSection}>
+                    <TouchableOpacity 
+                        style={styles.avatarContainer} 
+                        onPress={handlePickImage}
+                        disabled={uploadingPhoto}
                     >
                         <LinearGradient
-                            colors={['#EF444410', '#EF444405']}
-                            style={styles.signOutInner}
+                            colors={['#3B82F6', '#2563EB']}
+                            style={styles.avatarGradient}
                         >
-                            <View style={styles.signOutIconContainer}>
-                                <MaterialCommunityIcons name="logout-variant" size={24} color="#EF4444" />
-                            </View>
-                            <Text style={styles.signOutTextMain}>Sign Out from Device</Text>
-                            <MaterialCommunityIcons name="chevron-right" size={20} color="#EF4444" />
+                            {uploadingPhoto ? (
+                                <ActivityIndicator color="#fff" size="large" />
+                            ) : user?.photoURL ? (
+                                <Image source={{ uri: user.photoURL }} style={styles.avatarImage} />
+                            ) : (
+                                <Text style={styles.avatarInitial}>
+                                    {user?.displayName?.charAt(0)?.toUpperCase() || 'U'}
+                                </Text>
+                            )}
                         </LinearGradient>
+                        <View style={styles.statusDot} />
+                        <View style={styles.cameraIconBadge}>
+                            <MaterialCommunityIcons name="camera" size={14} color="#fff" />
+                        </View>
+                    </TouchableOpacity>
+                    
+                    <Text style={styles.userNameText}>{user?.displayName || 'Safe User'}</Text>
+                    <Text style={styles.userRoleText}>Premium Member</Text>
+
+                    <TouchableOpacity
+                        style={styles.editBtn}
+                        onPress={() => {
+                            setNewName(user?.displayName || '');
+                            setNewEmail(user?.email || '');
+                            setNewPhone(user?.phone || '');
+                            setIsEditing(true);
+                        }}
+                    >
+                        <MaterialCommunityIcons name="pencil" size={18} color="#fff" />
+                        <Text style={styles.editBtnText}>Edit Details</Text>
                     </TouchableOpacity>
                 </View>
 
-                {/* Footer Attribution */}
-                <View style={styles.premiumFooter}>
-                    <Text style={styles.footerAppTitle}>SafeWalk Premium</Text>
-                    <Text style={styles.footerVersionText}>Version 1.2.0 • Build 2402</Text>
-                    <View style={styles.footerDivider} />
-                    <Text style={styles.footerLegalText}>© 2026 SafeWalk Infrastructure. All rights reserved.</Text>
+                {/* Info Cards */}
+                <View style={styles.infoSection}>
+                    <View style={styles.infoCard}>
+                        <View style={styles.infoIconBox}>
+                            <MaterialCommunityIcons name="account-outline" size={22} color="#3B82F6" />
+                        </View>
+                        <View style={styles.infoContent}>
+                            <Text style={styles.infoLabel}>FULL NAME</Text>
+                            <Text style={styles.infoValue}>{user?.displayName || 'Not set'}</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.infoCard}>
+                        <View style={[styles.infoIconBox, { backgroundColor: 'rgba(168, 85, 247, 0.1)' }]}>
+                            <MaterialCommunityIcons name="email-outline" size={22} color="#A855F7" />
+                        </View>
+                        <View style={styles.infoContent}>
+                            <Text style={styles.infoLabel}>EMAIL ADDRESS</Text>
+                            <Text style={styles.infoValue}>{user?.email || 'Not set'}</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.infoCard}>
+                        <View style={[styles.infoIconBox, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
+                            <MaterialCommunityIcons name="phone-outline" size={22} color="#10B981" />
+                        </View>
+                        <View style={styles.infoContent}>
+                            <Text style={styles.infoLabel}>PHONE NUMBER</Text>
+                            <Text style={styles.infoValue}>{user?.phone || 'Not set'}</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.infoCard}>
+                        <View style={[styles.infoIconBox, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
+                            <MaterialCommunityIcons name="shield-check-outline" size={22} color="#F59E0B" />
+                        </View>
+                        <View style={styles.infoContent}>
+                            <Text style={styles.infoLabel}>USER ID</Text>
+                            <Text style={styles.infoValue} numberOfLines={1}>
+                                {user?.uid?.substring(0, 16) + '...' || 'Not available'}
+                            </Text>
+                        </View>
+                    </View>
+                </View>
+
+                {/* Privacy & Security */}
+                <View style={styles.actionSection}>
+                    <Text style={styles.sectionTitle}>PRIVACY & SECURITY</Text>
+                    <View style={styles.actionCardContainer}>
+                        <TouchableOpacity
+                            style={styles.actionItem}
+                            onPress={() => setIsChangingPassword(true)}
+                        >
+                            <View style={[styles.actionIcon, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
+                                <MaterialCommunityIcons name="lock-outline" size={20} color="#F59E0B" />
+                            </View>
+                            <Text style={styles.actionText}>Update Security Password</Text>
+                            <MaterialCommunityIcons name="chevron-right" size={20} color="#64748B" />
+                        </TouchableOpacity>
+
+                        <View style={styles.actionDivider} />
+
+                        <TouchableOpacity
+                            style={styles.actionItem}
+                            onPress={() => Alert.alert('Privacy Policy', 'Your data is encrypted and secure.')}
+                        >
+                            <View style={[styles.actionIcon, { backgroundColor: 'rgba(148, 163, 184, 0.1)' }]}>
+                                <MaterialCommunityIcons name="book-open-outline" size={20} color="#94A3B8" />
+                            </View>
+                            <Text style={styles.actionText}>Privacy Policy</Text>
+                            <MaterialCommunityIcons name="chevron-right" size={20} color="#64748B" />
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Sign Out Button */}
+                    <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut}>
+                        <MaterialCommunityIcons name="logout-variant" size={20} color="#EF4444" />
+                        <Text style={styles.signOutBtnText}>Sign Out from Device</Text>
+                    </TouchableOpacity>
                 </View>
             </ScrollView>
 
-            {/* Premium Edit Profile Modal */}
-            <Modal
-                visible={isEditing}
-                transparent={true}
-                animationType="fade"
-                onRequestClose={() => setIsEditing(false)}
-            >
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    style={styles.modalOverlay}
-                >
-                    <View style={styles.premiumModalSheet}>
-                        <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
-                            <LinearGradient
-                                colors={['#4F46E5', '#3730A3']}
-                                style={styles.modalHeaderGradient}
-                            >
-                                <View style={styles.modalTitleBox}>
-                                    <Text style={styles.modalTitlePremium}>Identity settings</Text>
-                                    <Text style={styles.modalSubTitlePremium}>Update your profile information</Text>
-                                </View>
-                                <TouchableOpacity
-                                    style={styles.modalCloseButton}
-                                    onPress={() => setIsEditing(false)}
-                                >
-                                    <MaterialCommunityIcons name="close" size={20} color="#fff" />
-                                </TouchableOpacity>
-                            </LinearGradient>
-
-                            <View style={styles.modalBodyFields}>
-                                <Text style={styles.premiumFieldLabel}>Full Name</Text>
-                                <View style={styles.premiumInputContainer}>
-                                    <MaterialCommunityIcons name="account-details-outline" size={20} color="#4F46E5" />
-                                    <TextInput
-                                        style={styles.premiumTextInput}
-                                        placeholder="Enter your name"
-                                        placeholderTextColor="#94A3B8"
-                                        value={newName}
-                                        onChangeText={setNewName}
-                                        autoFocus={true}
-                                    />
-                                </View>
-
-                                <Text style={styles.premiumFieldLabel}>Email Address</Text>
-                                <View style={styles.premiumInputContainer}>
-                                    <MaterialCommunityIcons name="email-outline" size={20} color="#4F46E5" />
-                                    <TextInput
-                                        style={styles.premiumTextInput}
-                                        placeholder="Enter your email"
-                                        placeholderTextColor="#94A3B8"
-                                        value={newEmail}
-                                        onChangeText={setNewEmail}
-                                        keyboardType="email-address"
-                                    />
-                                </View>
-
-                                <Text style={styles.premiumFieldLabel}>Phone Number</Text>
-                                <View style={styles.premiumInputContainer}>
-                                    <MaterialCommunityIcons name="phone-outline" size={20} color="#4F46E5" />
-                                    <TextInput
-                                        style={styles.premiumTextInput}
-                                        placeholder="Enter your phone number"
-                                        placeholderTextColor="#94A3B8"
-                                        value={newPhone}
-                                        onChangeText={setNewPhone}
-                                        keyboardType="phone-pad"
-                                    />
-                                </View>
-
-                                <TouchableOpacity
-                                    style={styles.premiumPrimaryButton}
-                                    onPress={handleUpdateProfile}
-                                    disabled={updating}
-                                >
-                                    <LinearGradient
-                                        colors={['#4F46E5', '#7C3AED']}
-                                        style={styles.buttonGradientInner}
-                                    >
-                                        {updating ? (
-                                            <ActivityIndicator color="#fff" size="small" />
-                                        ) : (
-                                            <>
-                                                <MaterialCommunityIcons name="check-decagram" size={20} color="#fff" />
-                                                <Text style={styles.primaryButtonText}>Sync Changes</Text>
-                                            </>
-                                        )}
-                                    </LinearGradient>
-                                </TouchableOpacity>
-                            </View>
-                        </ScrollView>
+            {/* Edit Modal (Keeping functionality, matching style) */}
+            <Modal visible={isEditing} transparent={true} animationType="slide">
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Edit Identity</Text>
+                        <TextInput
+                            style={styles.modalInput}
+                            placeholder="Full Name"
+                            placeholderTextColor="#64748B"
+                            value={newName}
+                            onChangeText={setNewName}
+                        />
+                        <TextInput
+                            style={styles.modalInput}
+                            placeholder="Email"
+                            placeholderTextColor="#64748B"
+                            value={newEmail}
+                            onChangeText={setNewEmail}
+                            keyboardType="email-address"
+                        />
+                        <TextInput
+                            style={styles.modalInput}
+                            placeholder="Phone"
+                            placeholderTextColor="#64748B"
+                            value={newPhone}
+                            onChangeText={setNewPhone}
+                            keyboardType="phone-pad"
+                        />
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity style={styles.modalCancel} onPress={() => setIsEditing(false)}>
+                                <Text style={styles.modalBtnText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.modalSave} onPress={handleUpdateProfile}>
+                                {updating ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalBtnText}>Save</Text>}
+                            </TouchableOpacity>
+                        </View>
                     </View>
-                </KeyboardAvoidingView>
+                </View>
             </Modal>
 
-            {/* Premium Change Password Modal */}
-            <Modal
-                visible={isChangingPassword}
-                transparent={true}
-                animationType="fade"
-                onRequestClose={() => setIsChangingPassword(false)}
-            >
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    style={styles.modalOverlay}
-                >
-                    <View style={styles.premiumModalSheet}>
-                        <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
-                            <LinearGradient
-                                colors={['#F59E0B', '#D97706']}
-                                style={styles.modalHeaderGradient}
-                            >
-                                <View style={styles.modalTitleBox}>
-                                    <Text style={styles.modalTitlePremium}>Security Shield</Text>
-                                    <Text style={styles.modalSubTitlePremium}>Change your access password</Text>
-                                </View>
-                                <TouchableOpacity
-                                    style={styles.modalCloseButton}
-                                    onPress={() => setIsChangingPassword(false)}
-                                >
-                                    <MaterialCommunityIcons name="close" size={20} color="#fff" />
-                                </TouchableOpacity>
-                            </LinearGradient>
-
-                            <View style={styles.modalBodyFields}>
-                                <Text style={styles.premiumFieldLabel}>New Security Code</Text>
-                                <View style={styles.premiumInputContainer}>
-                                    <MaterialCommunityIcons name="lock-outline" size={20} color="#F59E0B" />
-                                    <TextInput
-                                        style={styles.premiumTextInput}
-                                        placeholder="Min 6 characters"
-                                        placeholderTextColor="#94A3B8"
-                                        value={newPassword}
-                                        onChangeText={setNewPassword}
-                                        secureTextEntry
-                                    />
-                                </View>
-
-                                <Text style={styles.premiumFieldLabel}>Verification Code</Text>
-                                <View style={styles.premiumInputContainer}>
-                                    <MaterialCommunityIcons name="lock-check-outline" size={20} color="#F59E0B" />
-                                    <TextInput
-                                        style={styles.premiumTextInput}
-                                        placeholder="Confirm new password"
-                                        placeholderTextColor="#94A3B8"
-                                        value={confirmPassword}
-                                        onChangeText={setConfirmPassword}
-                                        secureTextEntry
-                                    />
-                                </View>
-
-                                <TouchableOpacity
-                                    style={styles.premiumPrimaryButton}
-                                    onPress={handleChangePassword}
-                                    disabled={passwordUpdating}
-                                >
-                                    <LinearGradient
-                                        colors={['#F59E0B', '#D97706']}
-                                        style={styles.buttonGradientInner}
-                                    >
-                                        {passwordUpdating ? (
-                                            <ActivityIndicator color="#fff" size="small" />
-                                        ) : (
-                                            <>
-                                                <MaterialCommunityIcons name="shield-lock-outline" size={20} color="#fff" />
-                                                <Text style={styles.primaryButtonText}>Solidify Password</Text>
-                                            </>
-                                        )}
-                                    </LinearGradient>
-                                </TouchableOpacity>
-                            </View>
-                        </ScrollView>
+            {/* Password Modal (Keeping functionality, matching style) */}
+            <Modal visible={isChangingPassword} transparent={true} animationType="slide">
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Update Security Code</Text>
+                        <TextInput
+                            style={styles.modalInput}
+                            placeholder="New Password"
+                            placeholderTextColor="#64748B"
+                            value={newPassword}
+                            onChangeText={setNewPassword}
+                            secureTextEntry
+                        />
+                        <TextInput
+                            style={styles.modalInput}
+                            placeholder="Confirm New Password"
+                            placeholderTextColor="#64748B"
+                            value={confirmPassword}
+                            onChangeText={setConfirmPassword}
+                            secureTextEntry
+                        />
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity style={styles.modalCancel} onPress={() => setIsChangingPassword(false)}>
+                                <Text style={styles.modalBtnText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.modalSave} onPress={handleChangePassword}>
+                                {passwordUpdating ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalBtnText}>Update</Text>}
+                            </TouchableOpacity>
+                        </View>
                     </View>
-                </KeyboardAvoidingView>
+                </View>
             </Modal>
         </View>
     );
@@ -487,7 +422,29 @@ export default function Profile({ navigation }) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: '#010A1A',
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingTop: Platform.OS === 'ios' ? 60 : 40,
+        paddingHorizontal: 20,
+        marginBottom: 20,
+    },
+    backButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 14,
+        backgroundColor: 'rgba(30, 41, 59, 0.5)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    headerTitle: {
+        flex: 1,
+        textAlign: 'center',
+        fontSize: 20,
+        fontWeight: '900',
+        color: '#F8FAFC',
     },
     scrollView: {
         flex: 1,
@@ -495,71 +452,32 @@ const styles = StyleSheet.create({
     scrollContent: {
         paddingBottom: 40,
     },
-    premiumHeaderBox: {
-        width: '100%',
-    },
-    premiumHeaderGradient: {
-        paddingTop: Platform.OS === 'ios' ? 45 : 25,
-        paddingBottom: 10,
-        borderBottomLeftRadius: 30,
-        borderBottomRightRadius: 30,
-    },
-    headerTopBar: {
-        flexDirection: 'row',
+    heroSection: {
         alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        marginBottom: 2,
+        paddingVertical: 20,
     },
-    premiumBackButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 14,
-        backgroundColor: 'rgba(255,255,255,0.15)',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    premiumHeaderTitle: {
-        fontSize: 18,
-        fontWeight: '800',
-        color: '#fff',
-        letterSpacing: -0.5,
-    },
-    heroProfileSection: {
-        alignItems: 'center',
-        paddingHorizontal: 20,
-    },
-    premiumAvatarContainer: {
+    avatarContainer: {
         position: 'relative',
-        marginBottom: 8,
+        marginBottom: 16,
     },
-    avatarRing: {
-        width: 65,
-        height: 65,
-        borderRadius: 22,
-        padding: 2,
+    avatarGradient: {
+        width: 120,
+        height: 120,
+        borderRadius: 40,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    avatarInner: {
+    avatarInitial: {
+        fontSize: 52,
+        fontWeight: '900',
+        color: '#fff',
+    },
+    avatarImage: {
         width: '100%',
         height: '100%',
-        borderRadius: 20,
-        backgroundColor: '#fff',
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 4,
+        borderRadius: 40,
     },
-    avatarInitialText: {
-        fontSize: 26,
-        fontWeight: '900',
-        color: '#4F46E5',
-    },
-    activeStatusBadge: {
+    statusDot: {
         position: 'absolute',
         bottom: 5,
         right: 5,
@@ -568,290 +486,201 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         backgroundColor: '#10B981',
         borderWidth: 4,
-        borderColor: '#fff',
+        borderColor: '#010A1A',
+        zIndex: 2,
     },
-    heroNameGroup: {
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    heroNameText: {
-        fontSize: 20,
-        fontWeight: '900',
-        color: '#fff',
-        marginBottom: 2,
-        letterSpacing: -0.5,
-    },
-    roleBadgePremium: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        paddingHorizontal: 12,
-        paddingVertical: 4,
+    cameraIconBadge: {
+        position: 'absolute',
+        top: 5,
+        right: 5,
+        width: 24,
+        height: 24,
         borderRadius: 12,
-        gap: 6,
+        backgroundColor: '#2563EB',
+        borderWidth: 2,
+        borderColor: '#010A1A',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
-    roleTextPremium: {
-        color: '#fff',
-        fontSize: 11,
-        fontWeight: '800',
-        letterSpacing: 1,
+    userNameText: {
+        fontSize: 28,
+        fontWeight: '900',
+        color: '#F8FAFC',
     },
-    premiumEditFab: {
+    userRoleText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#64748B',
+        marginTop: 4,
+    },
+    editBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#2563EB',
+        paddingHorizontal: 20,
+        paddingVertical: 10,
         borderRadius: 20,
-        overflow: 'hidden',
-    },
-    glassButtonInner: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 6,
-        gap: 6,
-    },
-    glassButtonText: {
-        color: '#fff',
-        fontSize: 14,
-        fontWeight: '700',
-    },
-    contentSection: {
-        paddingHorizontal: 24,
-        marginTop: -20,
-    },
-    sectionHeaderRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 16,
-        paddingHorizontal: 4,
-    },
-    premiumSectionTitle: {
-        fontSize: 12,
-        fontWeight: '900',
-        color: '#1E293B',
-        letterSpacing: 1.5,
-        textTransform: 'uppercase',
-    },
-    premiumOptionCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#fff',
-        padding: 16,
-        borderRadius: 24,
-        marginBottom: 12,
-        shadowColor: '#64748B',
+        marginTop: 20,
+        gap: 8,
+        shadowColor: '#2563EB',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 12,
-        elevation: 2,
-        borderWidth: 1,
-        borderColor: '#F1F5F9',
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
     },
-    optionIconBox: {
+    editBtnText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '800',
+    },
+    infoSection: {
+        paddingHorizontal: 20,
+        marginTop: 20,
+    },
+    infoCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#0B1526',
+        padding: 16,
+        borderRadius: 24,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
+    },
+    infoIconBox: {
         width: 48,
         height: 48,
         borderRadius: 16,
+        backgroundColor: 'rgba(37, 99, 235, 0.1)',
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 16,
     },
-    optionInfoBox: {
-        flex: 1,
+    infoContent: {
+        marginLeft: 16,
     },
-    optionLabelText: {
-        fontSize: 12,
+    infoLabel: {
+        fontSize: 10,
         fontWeight: '800',
-        color: '#94A3B8',
-        marginBottom: 2,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
+        color: '#64748B',
+        letterSpacing: 1,
     },
-    optionValueText: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#1E293B',
+    infoValue: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#F8FAFC',
+        marginTop: 2,
     },
-    premiumActionCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#fff',
-        padding: 16,
-        borderRadius: 22,
-        marginBottom: 10,
-        shadowColor: '#64748B',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
-        shadowRadius: 10,
-        elevation: 1,
-        borderWidth: 1,
-        borderColor: '#F1F5F9',
-    },
-    actionIconBox: {
-        width: 44,
-        height: 44,
-        borderRadius: 14,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 16,
-    },
-    actionLabelText: {
-        flex: 1,
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#1E293B',
-    },
-    premiumSignOutCard: {
+    actionSection: {
+        paddingHorizontal: 20,
         marginTop: 30,
+    },
+    sectionTitle: {
+        fontSize: 12,
+        fontWeight: '900',
+        color: '#64748B',
+        letterSpacing: 1.5,
+        marginBottom: 16,
+        marginLeft: 4,
+    },
+    actionCardContainer: {
+        backgroundColor: '#0B1526',
         borderRadius: 24,
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: '#FEE2E2',
+        borderColor: 'rgba(255, 255, 255, 0.05)',
     },
-    signOutInner: {
+    actionItem: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16,
     },
-    signOutIconContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 16,
-        backgroundColor: '#FEE2E2',
+    actionIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 16,
     },
-    signOutTextMain: {
+    actionText: {
         flex: 1,
+        marginLeft: 16,
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#F8FAFC',
+    },
+    actionDivider: {
+        height: 1,
+        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        marginHorizontal: 16,
+    },
+    signOutBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(239, 68, 68, 0.05)',
+        padding: 18,
+        borderRadius: 24,
+        marginTop: 30,
+        gap: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(239, 68, 68, 0.2)',
+    },
+    signOutBtnText: {
+        color: '#EF4444',
         fontSize: 16,
         fontWeight: '800',
-        color: '#EF4444',
-    },
-    premiumFooter: {
-        alignItems: 'center',
-        marginTop: 40,
-        marginBottom: 20,
-        paddingHorizontal: 40,
-    },
-    footerAppTitle: {
-        fontSize: 14,
-        fontWeight: '900',
-        color: '#1E293B',
-        letterSpacing: 1,
-        marginBottom: 4,
-    },
-    footerVersionText: {
-        fontSize: 12,
-        color: '#94A3B8',
-        fontWeight: '600',
-        marginBottom: 12,
-    },
-    footerDivider: {
-        width: 40,
-        height: 3,
-        backgroundColor: '#E2E8F0',
-        borderRadius: 2,
-        marginBottom: 12,
-    },
-    footerLegalText: {
-        fontSize: 10,
-        color: '#CBD5E1',
-        textAlign: 'center',
-        lineHeight: 16,
-        fontWeight: '600',
     },
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(15, 23, 42, 0.6)',
-        justifyContent: 'flex-start',
-        paddingHorizontal: 20,
-        paddingTop: Platform.OS === 'ios' ? 80 : 50,
-    },
-    premiumModalSheet: {
-        backgroundColor: '#fff',
-        borderRadius: 30,
-        overflow: 'hidden',
-        maxHeight: '90%',
-    },
-    modalHeaderGradient: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        justifyContent: 'center',
         padding: 24,
-        paddingTop: 30,
     },
-    modalTitleBox: {
-        flex: 1,
+    modalContent: {
+        backgroundColor: '#0B1526',
+        borderRadius: 32,
+        padding: 24,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
     },
-    modalTitlePremium: {
+    modalTitle: {
         fontSize: 22,
         fontWeight: '900',
-        color: '#fff',
-        letterSpacing: -0.5,
-    },
-    modalSubTitlePremium: {
-        fontSize: 13,
-        color: 'rgba(255,255,255,0.8)',
-        fontWeight: '600',
-        marginTop: 2,
-    },
-    modalCloseButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 12,
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    modalBodyFields: {
-        padding: 24,
-    },
-    premiumFieldLabel: {
-        fontSize: 11,
-        fontWeight: '900',
-        color: '#1E293B',
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-        marginBottom: 10,
-        marginLeft: 4,
-    },
-    premiumInputContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#F8FAFC',
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-        borderRadius: 18,
-        paddingHorizontal: 16,
-        height: 56,
+        color: '#F8FAFC',
         marginBottom: 24,
     },
-    premiumTextInput: {
-        flex: 1,
-        marginLeft: 12,
+    modalInput: {
+        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        borderRadius: 16,
+        padding: 16,
+        color: '#F8FAFC',
         fontSize: 16,
-        color: '#1E293B',
-        fontWeight: '700',
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
     },
-    premiumPrimaryButton: {
-        borderRadius: 20,
-        overflow: 'hidden',
-        shadowColor: '#4F46E5',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.25,
-        shadowRadius: 12,
-        elevation: 8,
-    },
-    buttonGradientInner: {
+    modalActions: {
         flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: 56,
-        gap: 10,
+        gap: 12,
+        marginTop: 8,
     },
-    primaryButtonText: {
+    modalCancel: {
+        flex: 1,
+        padding: 16,
+        borderRadius: 16,
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    },
+    modalSave: {
+        flex: 1,
+        padding: 16,
+        borderRadius: 16,
+        alignItems: 'center',
+        backgroundColor: '#2563EB',
+    },
+    modalBtnText: {
         color: '#fff',
         fontSize: 16,
         fontWeight: '800',
-        letterSpacing: 0.5,
     },
 });
 

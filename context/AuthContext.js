@@ -8,8 +8,9 @@ import {
     sendPasswordResetEmail,
     updatePassword as firebaseUpdatePassword
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
-import { auth, db } from '../config/firebase';
+import { doc, setDoc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { auth, db, storage } from '../config/firebase';
 
 // Create Authentication Context
 const AuthContext = createContext(null);
@@ -30,6 +31,7 @@ export function AuthProvider({ children }) {
                     uid: firebaseUser.uid,
                     email: firebaseUser.email,
                     displayName: firebaseUser.displayName || '',
+                    photoURL: firebaseUser.photoURL || null,
                 });
 
                 // Listen for real-time changes to the user's document in Firestore
@@ -239,6 +241,59 @@ export function AuthProvider({ children }) {
         }
     };
 
+    /**
+     * Update user profile photo
+     * @param {string} imageUri - Local URI of the image to upload
+     */
+    const updateProfilePhoto = async (imageUri) => {
+        try {
+            if (!auth.currentUser) throw new Error('No user logged in');
+            setLoading(true);
+
+            // 1. Prepare blob from image URI (Robust version for React Native)
+            const blob = await new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.onload = function () {
+                    resolve(xhr.response);
+                };
+                xhr.onerror = function (e) {
+                    reject(new TypeError('Network request failed'));
+                };
+                xhr.responseType = 'blob';
+                xhr.open('GET', imageUri, true);
+                xhr.send(null);
+            });
+
+            // 2. Upload to Firebase Storage
+            const storageRef = ref(storage, `profile_photos/${auth.currentUser.uid}`);
+            await uploadBytes(storageRef, blob);
+
+            // Close the blob to free up memory
+            if (blob.close) blob.close();
+
+            // 3. Get download URL
+            const photoURL = await getDownloadURL(storageRef);
+
+            // 4. Update Firebase Auth profile
+            await updateProfile(auth.currentUser, { photoURL });
+
+            // 5. Update Firestore document
+            await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+                photoURL: photoURL
+            });
+
+            // 6. Update local state
+            setUser(prev => ({ ...prev, photoURL }));
+
+            setLoading(false);
+            return { success: true, photoURL };
+        } catch (err) {
+            setLoading(false);
+            console.error('Error uploading profile photo:', err);
+            return { success: false, error: err.message };
+        }
+    };
+
     const logout = async () => {
         try {
             setError(null);
@@ -259,7 +314,8 @@ export function AuthProvider({ children }) {
         logout,
         updateUser,
         sendPasswordReset,
-        updatePassword
+        updatePassword,
+        updateProfilePhoto
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
