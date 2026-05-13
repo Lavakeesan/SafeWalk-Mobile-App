@@ -11,6 +11,7 @@ import {
   Dimensions,
   Modal,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -468,35 +469,24 @@ View: https://www.google.com/maps?q=${current.lat},${current.lng}`;
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
 
-      {/* Header (Fixed) */}
-      <View style={styles.headerWrapper}>
-        <LinearGradient
-          colors={['#4F46E5', '#3730A3']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.header}
-        >
-          <View style={styles.headerContent}>
-            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-              <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
-            </TouchableOpacity>
+      {/* Modern Session Header */}
+      <View style={styles.sessionHeader}>
+        <TouchableOpacity style={styles.headerIconButton} onPress={() => navigation.goBack()}>
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#F8FAFC" />
+        </TouchableOpacity>
 
-            <View style={styles.headerCenter}>
-              <View style={styles.liveIndicator}>
-                <View style={styles.liveDot} />
-                <Text style={styles.liveText}>LIVE</Text>
-              </View>
-              <Text style={styles.headerTitle}>Safe Walk Session</Text>
-              <Text style={styles.headerSubtitle}>with {contactName}</Text>
-            </View>
-
-            <View style={styles.headerAvatar}>
-              <Text style={styles.headerAvatarText}>
-                {contactName?.charAt(0)?.toUpperCase() || 'C'}
-              </Text>
-            </View>
+        <View style={styles.headerCenterArea}>
+          <View style={styles.liveBadge}>
+            <View style={styles.liveDotPulse} />
+            <Text style={styles.liveBadgeText}>LIVE</Text>
           </View>
-        </LinearGradient>
+          <Text style={styles.sessionMainTitle}>Safe Walk Session</Text>
+          <Text style={styles.sessionSubTitle}>with {contactName}</Text>
+        </View>
+
+        <TouchableOpacity style={styles.headerIconButton}>
+          <MaterialCommunityIcons name="radar" size={24} color="#00F2FF" />
+        </TouchableOpacity>
       </View>
 
       {/* Main Scrollable Content */}
@@ -504,266 +494,164 @@ View: https://www.google.com/maps?q=${current.lat},${current.lng}`;
         style={styles.content}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        bounces={true}
       >
-        {/* Stats Section */}
-        <View style={styles.statsContainer}>
-          <View style={[styles.statCard, styles.durationCard]}>
-            <MaterialCommunityIcons name="clock-outline" size={20} color="#3B82F6" />
-            <View style={styles.statInfo}>
-              <Text style={[styles.statValue, styles.durationText]}>{formatDuration(duration)}</Text>
-              <Text style={styles.statLabel}>Duration</Text>
-            </View>
+        {/* Top Stats Row */}
+        <View style={styles.statsRow}>
+          <View style={styles.statBoxCard}>
+            <MaterialCommunityIcons name="clock-outline" size={22} color="#00F2FF" />
+            <Text style={styles.statBoxValue}>{formatDuration(duration)}</Text>
+            <Text style={styles.statBoxLabel}>DURATION</Text>
           </View>
-
-          <View style={[styles.statCard, styles.distanceCard]}>
-            <MaterialCommunityIcons name="map-marker-distance" size={20} color="#10B981" />
-            <View style={styles.statInfo}>
-              <Text style={[styles.statValue, styles.distanceText]}>{formatDistance(distance)}</Text>
-              <Text style={styles.statLabel}>Distance</Text>
-            </View>
+          <View style={styles.statBoxCard}>
+            <MaterialCommunityIcons name="vector-polyline" size={22} color="#10B981" />
+            <Text style={styles.statBoxValue}>{formatDistance(distance)}</Text>
+            <Text style={styles.statBoxLabel}>DISTANCE</Text>
           </View>
-
-          <View style={[styles.statCard, styles.pointsCard]}>
-            <MaterialCommunityIcons name="map-marker-multiple" size={20} color="#8B5CF6" />
-            <View style={styles.statInfo}>
-              <Text style={[styles.statValue, styles.pointsText]}>{locations.length}</Text>
-              <Text style={styles.statLabel}>Points</Text>
-            </View>
+          <View style={styles.statBoxCard}>
+            <MaterialCommunityIcons name="map-marker-outline" size={22} color="#818CF8" />
+            <Text style={styles.statBoxValue}>{locations.length}</Text>
+            <Text style={styles.statBoxLabel}>POINTS</Text>
           </View>
         </View>
 
-        {/* Local Map View (Native Only) */}
-        <View style={styles.mapContainer}>
-          {currentLocation ? (
-            <>
+        {/* Perspective Map Container */}
+        <View style={styles.mapPerspectiveWrapper}>
+          <View style={styles.mapInnerContainer}>
+            {currentLocation ? (
               <MapView
                 ref={mapRef}
-                style={styles.map}
+                style={styles.mapViewInstance}
                 mapType="none"
                 showsUserLocation={Platform.OS !== 'web'}
                 initialRegion={{
                   latitude: currentLocation.lat,
                   longitude: currentLocation.lng,
-                  latitudeDelta: 0.015,
-                  longitudeDelta: 0.015,
+                  latitudeDelta: 0.01,
+                  longitudeDelta: 0.01,
                 }}
               >
                 {Platform.OS !== 'web' && (
                   <UrlTile
                     urlTemplate={`https://tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${process.env.EXPO_PUBLIC_LOCATIONIQ_API_KEY}`}
                     maximumZ={20}
-                    flipY={false}
-                    tileSize={256}
                   />
                 )}
-                {locations.length > 0 && (
-                  <Marker
-                    coordinate={{
-                      latitude: locations[0].lat,
-                      longitude: locations[0].lng,
-                    }}
-                    title="Start"
-                    pinColor="#10B981"
-                    zIndex={10}
-                    tracksViewChanges={false}
-                  />
-                )}
-                <Marker
-                  coordinate={{
-                    latitude: currentLocation.lat,
-                    longitude: currentLocation.lng,
-                  }}
-                  title="My Location"
-                  description="You are here"
-                  zIndex={20}
-                  tracksViewChanges={false}
-                />
-
                 {locations.length > 1 && (
                   <Polyline
-                    coordinates={locations.map(loc => ({
-                      latitude: loc.lat,
-                      longitude: loc.lng
-                    }))}
-                    strokeColor="#3B82F6"
+                    coordinates={locations.map(loc => ({ latitude: loc.lat, longitude: loc.lng }))}
+                    strokeColor="#2563EB"
                     strokeWidth={4}
                   />
                 )}
-              </MapView>
-
-              {/* Floating Fit View Button */}
-              {Platform.OS !== 'web' && (
-                <TouchableOpacity
-                  style={styles.fitButton}
-                  onPress={fitView}
-                  activeOpacity={0.7}
+                <Marker
+                  coordinate={{ latitude: currentLocation.lat, longitude: currentLocation.lng }}
+                  anchor={{ x: 0.5, y: 0.5 }}
                 >
-                  <MaterialCommunityIcons name="arrow-expand-all" size={20} color="#374151" />
-                </TouchableOpacity>
-              )}
-              <View style={styles.osmAttribution}>
-                <Text style={styles.osmAttributionText}>© LocationIQ | OpenStreetMap</Text>
+                  <View style={styles.pulsingUserMarker}>
+                    <View style={styles.markerInnerDot} />
+                  </View>
+                </Marker>
+              </MapView>
+            ) : (
+              <View style={styles.mapLoadingState}>
+                <ActivityIndicator color="#00F2FF" size="large" />
+                <Text style={styles.loadingMapText}>Acquiring signal...</Text>
               </View>
-            </>
+            )}
+
+            {/* Map Overlay Controls */}
+            <View style={styles.mapControlsRight}>
+              <TouchableOpacity style={styles.mapControlBtn} onPress={fitView}>
+                <MaterialCommunityIcons name="fullscreen" size={22} color="#F8FAFC" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.mapControlBtn}>
+                <MaterialCommunityIcons name="crosshairs-gps" size={22} color="#F8FAFC" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.mapAttributionSmall}>
+              <Text style={styles.attrText}>Aegis Maps | Legal</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Status Indicator Cards */}
+        <View style={styles.dualStatusRow}>
+          <LinearGradient
+            colors={['rgba(16, 185, 129, 0.1)', 'rgba(16, 185, 129, 0.02)']}
+            style={[styles.statusIndicatorCard, { borderColor: 'rgba(16, 185, 129, 0.4)' }]}
+          >
+            <View style={styles.statusCheckIcon}>
+              <MaterialCommunityIcons name="check-circle" size={20} color="#10B981" />
+            </View>
+            <View>
+              <Text style={styles.statusValueText}>Session Active</Text>
+              <Text style={styles.statusLabelText}>GUARDIAN ON</Text>
+            </View>
+          </LinearGradient>
+
+          <LinearGradient
+            colors={['rgba(0, 242, 255, 0.1)', 'rgba(0, 242, 255, 0.02)']}
+            style={[styles.statusIndicatorCard, { borderColor: 'rgba(0, 242, 255, 0.4)' }]}
+          >
+            <View style={styles.statusCheckIcon}>
+              <MaterialCommunityIcons name="signal-variant" size={20} color="#00F2FF" />
+            </View>
+            <View>
+              <Text style={styles.statusValueText}>GPS Connected</Text>
+              <Text style={styles.statusLabelText}>HIGH PRECISION</Text>
+            </View>
+          </LinearGradient>
+        </View>
+
+        {/* Recent Locations List */}
+        <View style={styles.recentLocationsSection}>
+          <View style={styles.sectionHeaderCompact}>
+            <Text style={styles.sectionTitleMain}>Recent Locations</Text>
+            <TouchableOpacity>
+              <Text style={styles.viewAllTextLink}>View All</Text>
+            </TouchableOpacity>
+          </View>
+
+          {locations.length > 0 ? (
+            locations.slice().reverse().slice(0, 3).map((loc, idx) => (
+              <TouchableOpacity key={idx} style={styles.locationListItem}>
+                <View style={styles.locIconContainer}>
+                  <MaterialCommunityIcons name="crosshairs" size={18} color="#94A3B8" />
+                </View>
+                <View style={styles.locTextContent}>
+                  <Text style={styles.locCoordsText}>{loc.lat.toFixed(6)}, {loc.lng.toFixed(6)}</Text>
+                  <Text style={styles.locAddressText}>Point registered {new Date(loc.ts).toLocaleTimeString()}</Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={20} color="#475569" />
+              </TouchableOpacity>
+            ))
           ) : (
-            <LinearGradient
-              colors={['#F3F4F6', '#E5E7EB']}
-              style={styles.mapPlaceholder}
-            >
-              <MaterialCommunityIcons name="map" size={64} color="#9CA3AF" />
-              <Text style={styles.mapText}>Initializing Map...</Text>
-            </LinearGradient>
+            <View style={styles.emptyLocState}>
+              <Text style={styles.emptyLocText}>No data points recorded yet</Text>
+            </View>
           )}
         </View>
-
-        {/* Alerts */}
-        {activeAlerts.length > 0 && (
-          <View style={styles.alertsContainer}>
-            <Text style={styles.alertsTitle}>⚠️ Safety Alerts</Text>
-            {activeAlerts.map((alert, index) => (
-              <View key={index} style={styles.alertCard}>
-                <View style={styles.alertIcon}>
-                  <MaterialCommunityIcons name="alert-circle" size={24} color="#EF4444" />
-                </View>
-                <View style={styles.alertContent}>
-                  <Text style={styles.alertMessage}>{alert.message}</Text>
-                  <Text style={styles.alertTime}>
-                    {new Date(alert.ts).toLocaleTimeString()}
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Status Info */}
-        <View style={styles.statusContainer}>
-          <View style={styles.statusCard}>
-            <MaterialCommunityIcons name="shield-check" size={24} color="#10B981" />
-            <Text style={styles.statusText}>Session Active</Text>
-          </View>
-          <View style={styles.statusCard}>
-            <MaterialCommunityIcons name="signal" size={24} color="#10B981" />
-            <Text style={styles.statusText}>GPS Connected</Text>
-          </View>
-        </View>
-
-        {/* Recent Locations */}
-        {locations.length > 0 && (
-          <View style={styles.locationsContainer}>
-            <Text style={styles.locationsTitle}>Recent Locations</Text>
-            {locations.slice().reverse().slice(0, 5).map((loc, index) => (
-              <View key={index} style={styles.locationCard}>
-                <MaterialCommunityIcons name="map-marker" size={20} color="#6B7280" />
-                <View style={styles.locationInfo}>
-                  <Text style={styles.locationCoords}>
-                    {loc.lat.toFixed(6)}, {loc.lng.toFixed(6)}
-                  </Text>
-                  <Text style={styles.locationTime}>
-                    {new Date(loc.ts).toLocaleTimeString()}
-                  </Text>
-                </View>
-                <Text style={styles.locationSpeed}>
-                  {(loc.speed * 3.6).toFixed(1)} km/h
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
       </ScrollView>
 
-      {/* Safety Check Modal */}
-      <Modal
-        visible={showSafetyModal}
-        transparent={true}
-        animationType="fade"
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.safetyModalContent}>
-            <View style={styles.safetyIconContainer}>
-              <MaterialCommunityIcons name="alert-circle-outline" size={48} color="#EF4444" />
-            </View>
-            <Text style={styles.safetyTitle}>Safety Check</Text>
-            <Text style={styles.safetyMessage}>
-              You haven't moved for a while. Are you okay?
-            </Text>
-            <Text style={styles.safetyTimer}>
-              Automatic SOS in <Text style={styles.timerCount}>{safetyCountdown}s</Text>
-            </Text>
+      {/* New Bottom Action Suite */}
+      <View style={styles.actionFooterSuite}>
+        <View style={styles.actionBtnRow}>
+          <TouchableOpacity style={styles.actionBtnSos} onPress={handleEmergency}>
+            <MaterialCommunityIcons name="asterisk" size={24} color="#fff" />
+            <Text style={styles.actionBtnLabel}>SOS</Text>
+          </TouchableOpacity>
 
-            <View style={styles.safetyActions}>
-              <TouchableOpacity
-                style={[styles.safetyButton, styles.safeButton]}
-                onPress={() => handleSafetyResponse(true)}
-              >
-                <Text style={styles.safeButtonText}>I'm Safe</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.safetyButton, styles.issueButton]}
-                onPress={() => handleSafetyResponse(false)}
-              >
-                <Text style={styles.issueButtonText}>I Need Help</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          <TouchableOpacity style={styles.actionBtnCall} onPress={handleCall}>
+            <MaterialCommunityIcons name="phone-outline" size={24} color="#fff" />
+            <Text style={styles.actionBtnLabel}>CALL</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.actionBtnEnd} onPress={handleEndWalk}>
+            <MaterialCommunityIcons name="stop-circle-outline" size={24} color="#fff" />
+            <Text style={styles.actionBtnLabel}>END</Text>
+          </TouchableOpacity>
         </View>
-      </Modal>
-
-      {/* Action Buttons (Fixed Footer) */}
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={[styles.emergencyButton, helpSent && styles.emergencyButtonDisabled]}
-          onPress={handleEmergency}
-          activeOpacity={0.8}
-          disabled={helpSent}
-        >
-          <LinearGradient
-            colors={helpSent ? ['#9CA3AF', '#6B7280'] : ['#EF4444', '#991B1B']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.emergencyButtonGradient}
-          >
-            <MaterialCommunityIcons
-              name={helpSent ? "check-circle-outline" : "alert-octagon"}
-              size={20}
-              color="#fff"
-            />
-            <Text style={styles.emergencyButtonText}>{helpSent ? 'HELP SENT' : 'SOS'}</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.callButton}
-          onPress={handleCall}
-          activeOpacity={0.8}
-        >
-          <LinearGradient
-            colors={['#10B981', '#059669']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.callButtonGradient}
-          >
-            <MaterialCommunityIcons name="phone" size={20} color="#fff" />
-            <Text style={styles.callButtonText}>Call</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.endButton}
-          onPress={handleEndWalk}
-          activeOpacity={0.8}
-        >
-          <LinearGradient
-            colors={['#4F46E5', '#3730A3']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.endButtonGradient}
-          >
-            <MaterialCommunityIcons name="stop-circle" size={20} color="#fff" />
-            <Text style={styles.endButtonText}>End</Text>
-          </LinearGradient>
-        </TouchableOpacity>
       </View>
     </View>
   );
@@ -772,452 +660,358 @@ View: https://www.google.com/maps?q=${current.lat},${current.lng}`;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#010A1A',
   },
-  headerWrapper: {
-    zIndex: 10,
-  },
-  header: {
-    paddingTop: Platform.OS === 'ios' ? 50 : 30,
-    paddingBottom: 16,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-  },
-  headerContent: {
+  sessionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 20,
   },
-  backButton: {
-    padding: 8,
+  headerIconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(30, 41, 59, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  headerCenter: {
+  headerCenterArea: {
     alignItems: 'center',
   },
-  liveIndicator: {
+  liveBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: '#2563EB',
     paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 10,
-    marginBottom: 4,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 6,
   },
-  liveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  liveDotPulse: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: '#fff',
     marginRight: 6,
   },
-  liveText: {
-    fontSize: 12,
-    fontWeight: '700',
+  liveBadgeText: {
     color: '#fff',
+    fontSize: 10,
+    fontWeight: '900',
     letterSpacing: 1,
   },
-  headerTitle: {
+  sessionMainTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#fff',
+    color: '#F8FAFC',
   },
-  headerSubtitle: {
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontWeight: '600',
-    marginTop: 1,
-  },
-  headerAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  headerAvatarText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#fff',
+  sessionSubTitle: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginTop: 2,
   },
   content: {
     flex: 1,
   },
   scrollContent: {
-    flexGrow: 1,
-    paddingBottom: 20, // Reduced as we no longer overlap with footer
+    paddingBottom: 120,
   },
-  statsContainer: {
+  statsRow: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    paddingTop: 20,
-    gap: 12,
+    justifyContent: 'space-between',
+    marginBottom: 24,
   },
-  statCard: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    gap: 8,
-  },
-  durationCard: {
-    backgroundColor: '#EFF6FF',
-    borderColor: '#DBEAFE',
-  },
-  distanceCard: {
-    backgroundColor: '#ECFDF5',
-    borderColor: '#D1FAE5',
-  },
-  pointsCard: {
-    backgroundColor: '#F5F3FF',
-    borderColor: '#EDE9FE',
-  },
-  statInfo: {
-    flex: 1,
-  },
-  statValue: {
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  durationText: {
-    color: '#1E40AF',
-  },
-  distanceText: {
-    color: '#065F46',
-  },
-  pointsText: {
-    color: '#5B21B6',
-  },
-  statLabel: {
-    fontSize: 9,
-    color: '#6B7280',
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    marginTop: 1,
-  },
-  mapContainer: {
-    marginHorizontal: 20,
-    marginTop: 20,
+  statBoxCard: {
+    width: (width - 60) / 3,
+    backgroundColor: '#0B1526',
     borderRadius: 20,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-    height: 380, // Slightly reduced height for better balance
-  },
-  map: {
-    width: '100%',
-    height: '100%',
-  },
-  markerContainer: {
+    paddingVertical: 20,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  markerHalo: {
-    position: 'absolute',
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(59, 130, 246, 0.2)',
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.4)',
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
-  mapPlaceholder: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
+  statBoxValue: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#F8FAFC',
+    marginTop: 8,
   },
-  mapText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6B7280',
-    marginTop: 12,
-  },
-  coordinatesBox: {
-    marginTop: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  coordinatesText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  alertsContainer: {
-    marginHorizontal: 20,
-    marginTop: 20,
-  },
-  alertsTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  alertCard: {
-    flexDirection: 'row',
-    backgroundColor: '#FEF2F2',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#FEE2E2',
-  },
-  alertIcon: {
-    marginRight: 12,
-  },
-  alertContent: {
-    flex: 1,
-  },
-  alertMessage: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#991B1B',
-    marginBottom: 4,
-  },
-  alertTime: {
-    fontSize: 12,
-    color: '#DC2626',
-  },
-  statusContainer: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
-    marginTop: 20,
-    gap: 12,
-  },
-  statusCard: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    gap: 8,
-  },
-  statusText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  locationsContainer: {
-    marginHorizontal: 20,
-    marginTop: 20,
-    marginBottom: 20,
-  },
-  locationsTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  locationCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  locationInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  locationCoords: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 2,
-  },
-  locationTime: {
-    fontSize: 11,
-    color: '#6B7280',
-  },
-  locationSpeed: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#3B82F6',
-  },
-  footer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    gap: 12,
-    // Add shadow to make the lifted footer look premium
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 20,
-  },
-  emergencyButton: {
-    flex: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
-    shadowColor: '#EF4444',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  emergencyButtonDisabled: {
-    shadowOpacity: 0.1,
-    elevation: 0,
-    opacity: 0.8,
-  },
-  emergencyButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    gap: 6,
-  },
-  emergencyButtonText: {
-    fontSize: 12,
+  statBoxLabel: {
+    fontSize: 10,
+    color: '#64748B',
     fontWeight: '800',
-    color: '#fff',
+    marginTop: 4,
     letterSpacing: 0.5,
   },
-  callButton: {
-    flex: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+  mapPerspectiveWrapper: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
   },
-  callButtonGradient: {
-    flexDirection: 'row',
+  mapInnerContainer: {
+    height: 320,
+    backgroundColor: '#0B1526',
+    borderRadius: 30,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  mapViewInstance: {
+    flex: 1,
+  },
+  mapLoadingState: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    gap: 6,
   },
-  callButtonText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#fff',
+  loadingMapText: {
+    color: '#94A3B8',
+    marginTop: 12,
+    fontSize: 14,
   },
-  endButton: {
-    flex: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
-    shadowColor: '#4F46E5',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+  mapControlsRight: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    gap: 12,
   },
-  endButtonGradient: {
-    flexDirection: 'row',
+  mapControlBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(1, 10, 26, 0.7)',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    gap: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  endButtonText: {
-    fontSize: 12,
+  mapAttributionSmall: {
+    position: 'absolute',
+    bottom: 15,
+    left: 20,
+    backgroundColor: 'rgba(1, 10, 26, 0.6)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  attrText: {
+    fontSize: 10,
+    color: '#94A3B8',
+  },
+  pulsingUserMarker: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 242, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  markerInnerDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#00F2FF',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  dualStatusRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    gap: 10,
+    marginBottom: 32,
+  },
+  statusIndicatorCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  statusCheckIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(30, 41, 59, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  statusValueText: {
+    fontSize: 13,
     fontWeight: '700',
-    color: '#fff',
+    color: '#F8FAFC',
   },
-  osmAttribution: {
+  statusLabelText: {
+    fontSize: 9,
+    color: '#64748B',
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  recentLocationsSection: {
+    paddingHorizontal: 20,
+  },
+  sectionHeaderCompact: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionTitleMain: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#F8FAFC',
+  },
+  viewAllTextLink: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#94A3B8',
+  },
+  locationListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0B1526',
+    padding: 16,
+    borderRadius: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.03)',
+  },
+  locIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(30, 41, 59, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  locTextContent: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  locCoordsText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#F8FAFC',
+  },
+  locAddressText: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  emptyLocState: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  emptyLocText: {
+    color: '#475569',
+    fontSize: 14,
+  },
+  actionFooterSuite: {
     position: 'absolute',
     bottom: 0,
+    left: 0,
     right: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderTopLeftRadius: 4,
+    paddingTop: 20,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+    paddingHorizontal: 20,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    backgroundColor: 'rgba(1, 10, 26, 0.95)', // Solid semi-transparent fallback
+    borderTopWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
-  fitButton: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    padding: 10,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  actionBtnRow: {
+    flexDirection: 'row',
+    gap: 12,
   },
-  osmAttributionText: {
-    fontSize: 10,
-    color: '#374151',
-    fontWeight: '500',
+  actionBtnSos: {
+    flex: 1,
+    backgroundColor: '#EF4444',
+    height: 64,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionBtnCall: {
+    flex: 1,
+    backgroundColor: '#10B981',
+    height: 64,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionBtnEnd: {
+    flex: 1,
+    backgroundColor: '#2563EB',
+    height: 64,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionBtnLabel: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#fff',
+    letterSpacing: 1,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
+    backgroundColor: 'rgba(1, 10, 26, 0.9)',
     alignItems: 'center',
-    padding: 20,
+    justifyContent: 'center',
+    padding: 40,
   },
   safetyModalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    padding: 24,
+    backgroundColor: '#0B1526',
+    borderRadius: 32,
+    padding: 30,
     width: '100%',
-    maxWidth: 400,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
   },
   safetyIconContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#FEF2F2',
-    justifyContent: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
     alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 20,
   },
   safetyTitle: {
     fontSize: 24,
-    fontWeight: '800',
-    color: '#111827',
-    marginBottom: 8,
+    fontWeight: '900',
+    color: '#F8FAFC',
+    marginBottom: 12,
   },
   safetyMessage: {
     fontSize: 16,
-    color: '#4B5563',
+    color: '#94A3B8',
     textAlign: 'center',
-    marginBottom: 20,
     lineHeight: 24,
+    marginBottom: 24,
   },
   safetyTimer: {
-    fontSize: 16,
-    color: '#374151',
-    fontWeight: '600',
-    marginBottom: 24,
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
+    fontSize: 18,
+    color: '#F8FAFC',
+    fontWeight: '700',
+    marginBottom: 32,
   },
   timerCount: {
     color: '#EF4444',
-    fontWeight: '800',
+    fontSize: 22,
+    fontWeight: '900',
   },
   safetyActions: {
     width: '100%',
@@ -1225,26 +1019,27 @@ const styles = StyleSheet.create({
   },
   safetyButton: {
     width: '100%',
-    paddingVertical: 16,
-    borderRadius: 14,
+    height: 56,
+    borderRadius: 16,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   safeButton: {
     backgroundColor: '#10B981',
   },
-  issueButton: {
-    backgroundColor: '#FEF2F2',
-    borderWidth: 2,
-    borderColor: '#EF4444',
-  },
   safeButtonText: {
     color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  issueButton: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderWidth: 1,
+    borderColor: '#EF4444',
   },
   issueButtonText: {
     color: '#EF4444',
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '800',
   },
 });

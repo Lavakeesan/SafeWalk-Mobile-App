@@ -476,7 +476,7 @@ export default function AdminOverview({ navigation }) {
                     </View>
                 ) : (
                     <>
-                        {/* Status Insights Chart Section */}
+                        {/* Dashboard Insights - Status Chart Only */}
                         <View style={styles.chartSection}>
                             <View style={styles.chartCard}>
                                 <View style={styles.chartHeader}>
@@ -484,26 +484,26 @@ export default function AdminOverview({ navigation }) {
                                     <Text style={styles.chartTitle}>Member Status Overview</Text>
                                 </View>
                                 <View style={styles.chartContainer}>
-                                    <PieChart
-                                        data={[
-                                            {
-                                                name: 'Active',
-                                                population: stats.activeNow,
-                                                color: '#3B82F6',
-                                                legendFontColor: '#F8FAFC',
-                                                legendFontSize: 12,
-                                            },
-                                            {
-                                                name: 'Inactive',
-                                                population: stats.totalUsers - stats.activeNow,
-                                                color: '#F43F5E',
-                                                legendFontColor: '#F8FAFC',
-                                                legendFontSize: 12,
-                                            },
-                                        ]}
-                                        width={width - 80}
-                                        height={180}
-                                        chartConfig={{
+                                        <PieChart
+                                            data={[
+                                                {
+                                                    name: 'Active',
+                                                    population: stats.activeNow,
+                                                    color: '#3B82F6',
+                                                    legendFontColor: '#F8FAFC',
+                                                    legendFontSize: 10,
+                                                },
+                                                {
+                                                    name: 'Idle',
+                                                    population: stats.totalUsers - stats.activeNow,
+                                                    color: '#F43F5E',
+                                                    legendFontColor: '#F8FAFC',
+                                                    legendFontSize: 10,
+                                                },
+                                            ]}
+                                            width={(width * 0.75) - 32}
+                                            height={120}
+                                            chartConfig={{
                                             color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
                                         }}
                                         accessor={"population"}
@@ -513,52 +513,15 @@ export default function AdminOverview({ navigation }) {
                                         absolute
                                     />
                                 </View>
-                                <View style={styles.chartFooter}>
-                                    <View style={styles.chartLegendItem}>
-                                        <View style={[styles.legendDot, { backgroundColor: '#3B82F6' }]} />
-                                        <Text style={styles.legendLabel}>Active Users ({stats.activeNow})</Text>
+                                <View style={styles.miniChartLegend}>
+                                    <View style={styles.miniLegendItem}>
+                                        <View style={[styles.miniDot, { backgroundColor: '#3B82F6' }]} />
+                                        <Text style={styles.miniLegendText}>Active ({stats.activeNow})</Text>
                                     </View>
-                                    <View style={styles.chartLegendItem}>
-                                        <View style={[styles.legendDot, { backgroundColor: '#F43F5E' }]} />
-                                        <Text style={styles.legendLabel}>Inactive Users ({stats.totalUsers - stats.activeNow})</Text>
+                                    <View style={styles.miniLegendItem}>
+                                        <View style={[styles.miniDot, { backgroundColor: '#F43F5E' }]} />
+                                        <Text style={styles.miniLegendText}>Idle ({stats.totalUsers - stats.activeNow})</Text>
                                     </View>
-                                </View>
-                            </View>
-                        </View>
-                        <View style={styles.chartSection}>
-                            <View style={styles.chartCard}>
-                                <View style={styles.chartHeader}>
-                                    <MaterialCommunityIcons name="trending-up" size={20} color="#10B981" />
-                                    <Text style={styles.chartTitle}>Registration Trends</Text>
-                                </View>
-                                <View style={styles.chartContainer}>
-                                    <LineChart
-                                        data={registrationData}
-                                        width={width - 80}
-                                        height={180}
-                                        chartConfig={{
-                                            backgroundColor: "transparent",
-                                            backgroundGradientFrom: "rgba(30, 41, 59, 0)",
-                                            backgroundGradientTo: "rgba(30, 41, 59, 0)",
-                                            decimalPlaces: 0,
-                                            color: (opacity = 1) => `rgba(129, 140, 248, ${opacity})`,
-                                            labelColor: (opacity = 1) => `rgba(148, 163, 184, ${opacity})`,
-                                            style: { borderRadius: 16 },
-                                            propsForDots: {
-                                                r: "4",
-                                                strokeWidth: "2",
-                                                stroke: "#4F46E5"
-                                            }
-                                        }}
-                                        bezier
-                                        style={{
-                                            marginVertical: 8,
-                                            borderRadius: 16
-                                        }}
-                                    />
-                                </View>
-                                <View style={styles.chartFooter}>
-                                    <Text style={styles.chartFooterText}>Daily user growth over the last 7 days</Text>
                                 </View>
                             </View>
                         </View>
@@ -995,30 +958,27 @@ export default function AdminOverview({ navigation }) {
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.premiumProfileModal}>
-                        {/* Header Image/Pattern Area */}
-                        <LinearGradient
-                            colors={['#4F46E5', '#7C3AED']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={styles.profileModalHeader}
-                        >
+                        <View style={styles.profileInfoBody}>
                             <TouchableOpacity
-                                style={styles.modalHeaderClose}
+                                style={styles.modalBodyClose}
                                 onPress={() => setShowAdminProfileModal(false)}
                             >
-                                <MaterialCommunityIcons name="close" size={22} color="#fff" />
+                                <MaterialCommunityIcons name="close" size={24} color="#94A3B8" />
                             </TouchableOpacity>
-                            <View style={styles.centralAvatarContainer}>
-                                <View style={styles.largeCentralAvatar}>
-                                    <Text style={styles.largeAvatarText}>
-                                        {adminUser?.displayName?.charAt(0).toUpperCase() || 'A'}
-                                    </Text>
-                                </View>
-                                <View style={styles.onlineBadge} />
-                            </View>
-                        </LinearGradient>
 
-                        <View style={styles.profileInfoBody}>
+                            <View style={styles.centralAvatarContainerBody}>
+                                <LinearGradient
+                                    colors={['#4F46E5', '#7C3AED']}
+                                    style={styles.largeAvatarRingBody}
+                                >
+                                    <View style={styles.largeCentralAvatar}>
+                                        <Text style={styles.largeAvatarText}>
+                                            {adminUser?.displayName?.charAt(0).toUpperCase() || 'A'}
+                                        </Text>
+                                    </View>
+                                </LinearGradient>
+                                <View style={styles.onlineBadgePremiumBody} />
+                            </View>
                             <View style={styles.adminTitleArea}>
                                 <Text style={styles.adminPremiumName}>{adminUser?.displayName || 'Administrator'}</Text>
                                 <View style={styles.premiumRoleTag}>
@@ -1028,33 +988,43 @@ export default function AdminOverview({ navigation }) {
                             </View>
 
                             <ScrollView showsVerticalScrollIndicator={false} style={styles.profileDetailsList}>
-                                <View style={styles.detailTile}>
-                                    <View style={[styles.detailIconBox, { backgroundColor: '#EEF2FF' }]}>
-                                        <MaterialCommunityIcons name="email-outline" size={20} color="#4F46E5" />
+                                <View style={styles.premiumDetailCard}>
+                                    <View style={[styles.detailIconBox, { backgroundColor: 'rgba(79, 70, 229, 0.1)' }]}>
+                                        <MaterialCommunityIcons name="email-outline" size={20} color="#818CF8" />
                                     </View>
                                     <View style={styles.detailTextContent}>
-                                        <Text style={styles.detailLabel}>Email Address</Text>
+                                        <Text style={styles.detailLabel}>PRIMARY EMAIL</Text>
                                         <Text style={styles.detailValue}>{adminUser?.email || 'admin@safewalk.lk'}</Text>
                                     </View>
                                 </View>
 
-                                <View style={styles.detailTile}>
-                                    <View style={[styles.detailIconBox, { backgroundColor: '#F0FDF4' }]}>
+                                <View style={styles.premiumDetailCard}>
+                                    <View style={[styles.detailIconBox, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
                                         <MaterialCommunityIcons name="identifier" size={20} color="#10B981" />
                                     </View>
                                     <View style={styles.detailTextContent}>
-                                        <Text style={styles.detailLabel}>Admin Identifier</Text>
-                                        <Text style={styles.detailValue}>ID-{adminUser?.uid?.substring(0, 8).toUpperCase()}</Text>
+                                        <Text style={styles.detailLabel}>ADMIN IDENTIFIER</Text>
+                                        <Text style={styles.detailValue}>ID-{adminUser?.uid?.substring(0, 8).toUpperCase() || 'SYSTEM'}</Text>
                                     </View>
                                 </View>
 
-                                <View style={styles.detailTile}>
-                                    <View style={[styles.detailIconBox, { backgroundColor: '#FFF7ED' }]}>
+                                <View style={styles.premiumDetailCard}>
+                                    <View style={[styles.detailIconBox, { backgroundColor: 'rgba(249, 115, 22, 0.1)' }]}>
                                         <MaterialCommunityIcons name="clock-check-outline" size={20} color="#F97316" />
                                     </View>
                                     <View style={styles.detailTextContent}>
-                                        <Text style={styles.detailLabel}>Session Started</Text>
+                                        <Text style={styles.detailLabel}>CURRENT SESSION</Text>
                                         <Text style={styles.detailValue}>Active since {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+                                    </View>
+                                </View>
+
+                                <View style={styles.premiumDetailCard}>
+                                    <View style={[styles.detailIconBox, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
+                                        <MaterialCommunityIcons name="security" size={20} color="#8B5CF6" />
+                                    </View>
+                                    <View style={styles.detailTextContent}>
+                                        <Text style={styles.detailLabel}>ACCESS LEVEL</Text>
+                                        <Text style={styles.detailValue}>Full Root Privileges</Text>
                                     </View>
                                 </View>
                             </ScrollView>
@@ -1074,13 +1044,13 @@ export default function AdminOverview({ navigation }) {
                                     }}
                                 >
                                     <LinearGradient
-                                        colors={['#EF4444', '#B91C1C']}
+                                        colors={['#EF4444', '#DC2626']}
                                         start={{ x: 0, y: 0 }}
                                         end={{ x: 1, y: 0 }}
                                         style={styles.signOutGradientFull}
                                     >
                                         <MaterialCommunityIcons name="logout-variant" size={20} color="#fff" />
-                                        <Text style={styles.signOutTextPremium}>SIGN OUT</Text>
+                                        <Text style={styles.signOutTextPremium}>TERMINATE SESSION</Text>
                                     </LinearGradient>
                                 </TouchableOpacity>
 
@@ -1088,7 +1058,7 @@ export default function AdminOverview({ navigation }) {
                                     style={styles.minimalBackButton}
                                     onPress={() => setShowAdminProfileModal(false)}
                                 >
-                                    <Text style={styles.minimalBackText}>Return to Dashboard</Text>
+                                    <Text style={styles.minimalBackText}>Return to Dashboard Control</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -1197,12 +1167,71 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         marginTop: 10,
     },
+    chartsRow: {
+        flexDirection: 'row',
+        paddingHorizontal: 24,
+        gap: 12,
+        marginTop: 10,
+        justifyContent: 'space-between',
+    },
+    halfChartSection: {
+        flex: 1,
+    },
+    halfChartCard: {
+        backgroundColor: 'rgba(30, 41, 59, 0.5)',
+        borderRadius: 20,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
+        height: 180,
+        justifyContent: 'space-between',
+    },
+    halfChartTitle: {
+        fontSize: 13,
+        fontWeight: '800',
+        color: '#F8FAFC',
+    },
+    miniChartLegend: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255, 255, 255, 0.05)',
+        paddingTop: 8,
+    },
+    miniLegendItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    miniDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+    },
+    miniLegendText: {
+        fontSize: 9,
+        color: '#94A3B8',
+        fontWeight: '600',
+    },
+    miniChartFooter: {
+        alignItems: 'center',
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255, 255, 255, 0.05)',
+        paddingTop: 8,
+    },
+    miniFooterText: {
+        fontSize: 9,
+        color: '#94A3B8',
+        fontWeight: '600',
+        letterSpacing: 0.5,
+    },
     chartCard: {
         backgroundColor: 'rgba(30, 41, 59, 0.5)',
         borderRadius: 24,
-        padding: 20,
+        padding: 16,
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.05)',
+        width: width * 0.75,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.2,
@@ -2210,48 +2239,54 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.1)',
     },
-    profileModalHeader: {
-        paddingTop: 40,
-        paddingBottom: 20,
-        alignItems: 'center',
-        position: 'relative',
-    },
-    modalHeaderClose: {
+    modalBodyClose: {
         position: 'absolute',
-        top: 15,
-        right: 15,
-        padding: 8,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        top: 20,
+        right: 20,
+        zIndex: 10,
+        width: 40,
+        height: 40,
         borderRadius: 20,
+        backgroundColor: 'rgba(30, 41, 59, 0.5)',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
-    centralAvatarContainer: {
-        position: 'relative',
+    centralAvatarContainerBody: {
+        marginTop: 20,
+        marginBottom: 20,
+        alignItems: 'center',
     },
-    largeCentralAvatar: {
+    largeAvatarRingBody: {
         width: 100,
         height: 100,
         borderRadius: 50,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        padding: 4,
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 4,
-        borderColor: 'rgba(255, 255, 255, 0.5)',
     },
-    largeAvatarText: {
-        fontSize: 40,
-        fontWeight: '800',
-        color: '#fff',
-    },
-    onlineBadge: {
+    onlineBadgePremiumBody: {
         position: 'absolute',
         bottom: 5,
-        right: 5,
+        right: 0, // Simplified for now
         width: 18,
         height: 18,
         borderRadius: 9,
         backgroundColor: '#10B981',
         borderWidth: 3,
-        borderColor: '#4F46E5',
+        borderColor: '#0F172A',
+    },
+    largeCentralAvatar: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 46,
+        backgroundColor: 'rgba(30, 41, 59, 0.8)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    largeAvatarText: {
+        fontSize: 40,
+        fontWeight: '800',
+        color: '#fff',
     },
     profileInfoBody: {
         padding: 24,
@@ -2262,74 +2297,76 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     adminPremiumName: {
-        fontSize: 22,
+        fontSize: 24,
         fontWeight: '800',
         color: '#F8FAFC',
-        marginBottom: 6,
+        marginBottom: 8,
+        letterSpacing: -0.5,
     },
     premiumRoleTag: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#EEF2FF',
-        paddingHorizontal: 12,
+        backgroundColor: 'rgba(79, 70, 229, 0.15)',
+        paddingHorizontal: 14,
         paddingVertical: 6,
         borderRadius: 20,
-        gap: 6,
+        gap: 8,
+        borderWidth: 1,
+        borderColor: 'rgba(79, 70, 229, 0.2)',
     },
     premiumRoleText: {
         fontSize: 10,
         fontWeight: '800',
-        color: '#4F46E5',
-        letterSpacing: 1,
+        color: '#818CF8',
+        letterSpacing: 1.2,
     },
     profileDetailsList: {
         width: '100%',
         marginBottom: 20,
     },
-    detailTile: {
+    premiumDetailCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 12,
+        padding: 16,
         backgroundColor: 'rgba(30, 41, 59, 0.5)',
-        borderRadius: 16,
+        borderRadius: 20,
         marginBottom: 12,
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.05)',
     },
     detailIconBox: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
+        width: 44,
+        height: 44,
+        borderRadius: 14,
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 12,
+        marginRight: 16,
     },
     detailTextContent: {
         flex: 1,
     },
     detailLabel: {
-        fontSize: 11,
-        color: '#94A3B8',
-        fontWeight: '600',
-        textTransform: 'uppercase',
+        fontSize: 10,
+        fontWeight: '800',
+        color: '#64748B',
+        letterSpacing: 1,
+        marginBottom: 4,
     },
     detailValue: {
-        fontSize: 14,
+        fontSize: 15,
         fontWeight: '700',
         color: '#F8FAFC',
-        marginTop: 1,
     },
     profileActionFooter: {
         width: '100%',
         gap: 12,
+        marginTop: 10,
     },
     premiumSignOutButton: {
+        width: '100%',
         borderRadius: 16,
         overflow: 'hidden',
         shadowColor: '#EF4444',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.3,
-        shadowRadius: 12,
         elevation: 6,
     },
     signOutGradientFull: {

@@ -108,31 +108,12 @@ export default function AddUser({ navigation }) {
         <View style={styles.container}>
             <StatusBar barStyle="light-content" />
 
-            {/* Premium Header */}
-            <View style={styles.premiumHeaderBox}>
-                <LinearGradient
-                    colors={['#4F46E5', '#7C3AED']}
-                    style={styles.premiumHeaderGradient}
-                >
-                    <View style={styles.headerLayout}>
-                        <TouchableOpacity
-                            style={styles.premiumBackButton}
-                            onPress={() => navigation.goBack()}
-                        >
-                            <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
-                        </TouchableOpacity>
-                        <View style={styles.headerTextLayer}>
-                            <Text style={styles.premiumHeaderTitle}>Add Member</Text>
-                            <Text style={styles.premiumHeaderSub}>System Registration Suite</Text>
-                        </View>
-                        {loading && (
-                            <View style={styles.headerLoadingBox}>
-                                <ActivityIndicator color="#fff" size="small" />
-                            </View>
-                        )}
-                    </View>
-                </LinearGradient>
-            </View>
+            <TouchableOpacity 
+                style={styles.minimalBackButtonTop}
+                onPress={() => navigation.goBack()}
+            >
+                <MaterialCommunityIcons name="arrow-left" size={24} color="#94A3B8" />
+            </TouchableOpacity>
 
             <ScrollView
                 style={styles.mainScroll}
@@ -293,14 +274,18 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 24,
     },
-    premiumBackButton: {
+    minimalBackButtonTop: {
         width: 44,
         height: 44,
         borderRadius: 14,
-        backgroundColor: 'rgba(255,255,255,0.15)',
+        backgroundColor: 'rgba(30, 41, 59, 0.5)',
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 16,
+        marginLeft: 24,
+        marginTop: Platform.OS === 'ios' ? 60 : 40,
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
     },
     headerTextLayer: {
         flex: 1,

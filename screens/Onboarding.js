@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   FlatList,
   Animated,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -66,18 +67,11 @@ const Onboarding = ({ navigation }) => {
       case 'tracking':
         return (
           <View style={styles.visualContainer}>
-            <View style={styles.trackingCard}>
-              <View style={styles.mapGrid}>
-                {[...Array(20)].map((_, i) => (
-                  <View key={i} style={styles.gridLine} />
-                ))}
-              </View>
-              <MaterialCommunityIcons name="account-marker" size={80} color="#3B82F6" />
-              <View style={styles.trackingStatus}>
-                <View style={styles.statusDot} />
-                <Text style={styles.statusText}>Active Session: Live tracking enabled</Text>
-              </View>
-            </View>
+            <Image 
+              source={require('../assets/38334725-A06B-4B8C-A119-B129A2833297_1_201_a.jpeg')} 
+              style={styles.onboardingImage} 
+              resizeMode="contain"
+            />
           </View>
         );
       case 'contacts':
@@ -227,7 +221,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     width: '100%',
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 80,
   },
   headerBrand: {
     fontSize: 28,
@@ -247,9 +241,14 @@ const styles = StyleSheet.create({
   },
   visualContainer: {
     width: width * 0.8,
-    height: width * 0.8,
+    height: width * 0.6,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  onboardingImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 20,
   },
   trackingCard: {
     width: '100%',
@@ -417,6 +416,7 @@ const styles = StyleSheet.create({
   textContainer: {
     alignItems: 'center',
     marginBottom: 60,
+    marginTop: 60,
   },
   title: {
     fontSize: 28,

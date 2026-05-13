@@ -48,7 +48,6 @@ export default function TrustedContacts({ navigation }) {
     }
 
     if (editingContact) {
-      // Update existing
       const updated = {
         ...editingContact,
         name: name.trim(),
@@ -56,9 +55,7 @@ export default function TrustedContacts({ navigation }) {
         phone: phone.trim(),
       };
       await updateContact(updated);
-      Alert.alert('Success', 'Contact updated successfully!');
     } else {
-      // Add new
       const newContact = {
         id: Date.now().toString(),
         name: name.trim(),
@@ -66,7 +63,6 @@ export default function TrustedContacts({ navigation }) {
         phone: phone.trim(),
       };
       await addContact(newContact);
-      Alert.alert('Success', 'Contact added successfully!');
     }
 
     setName('');
@@ -92,66 +88,40 @@ export default function TrustedContacts({ navigation }) {
   };
 
   const handleStartWalk = (contact) => {
-    Alert.alert(
-      'Start Walk Session',
-      `Start walk session with ${contact.name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Start',
-          onPress: () => {
-            start(contact);
-            navigation.navigate('Observer', { contact });
-          },
-        },
-      ]
-    );
+    start(contact);
+    navigation.navigate('Observer', { contact });
   };
 
   const renderContact = ({ item }) => (
     <View style={styles.contactCard}>
-      <TouchableOpacity
-        style={styles.contactMain}
-        onPress={() => handleStartWalk(item)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.contactAvatar}>
-          <Text style={styles.contactAvatarText}>
-            {item.name?.charAt(0)?.toUpperCase() || 'C'}
-          </Text>
+      <View style={styles.cardMain}>
+        <View style={styles.avatarWrapper}>
+          <Text style={styles.avatarText}>{item.name?.charAt(0)?.toUpperCase() || 'C'}</Text>
         </View>
-        <View style={styles.contactInfo}>
+        <View style={styles.contactDetails}>
           <Text style={styles.contactName}>{item.name}</Text>
-          <View style={styles.contactDetail}>
-            <MaterialCommunityIcons name="phone" size={14} color="#6B7280" />
-            <Text style={styles.contactDetailText}>{item.phone}</Text>
+          <View style={styles.detailRow}>
+            <MaterialCommunityIcons name="phone-outline" size={16} color="#94A3B8" />
+            <Text style={styles.detailText}>{item.phone}</Text>
           </View>
           {item.email && (
-            <View style={styles.contactDetail}>
-              <MaterialCommunityIcons name="email-outline" size={14} color="#6B7280" />
-              <Text style={styles.contactDetailText}>{item.email}</Text>
+            <View style={styles.detailRow}>
+              <MaterialCommunityIcons name="email-outline" size={16} color="#94A3B8" />
+              <Text style={styles.detailText}>{item.email}</Text>
             </View>
           )}
         </View>
-      </TouchableOpacity>
-      <View style={styles.contactActions}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => handleOpenEdit(item)}
-        >
-          <MaterialCommunityIcons name="pencil-outline" size={22} color="#4F46E5" />
+      </View>
+      
+      <View style={styles.cardActions}>
+        <TouchableOpacity style={styles.iconActionBtn} onPress={() => handleOpenEdit(item)}>
+          <MaterialCommunityIcons name="pencil-outline" size={22} color="#94A3B8" />
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => handleStartWalk(item)}
-        >
-          <MaterialCommunityIcons name="play-circle" size={24} color="#10B981" />
+        <TouchableOpacity style={styles.iconActionBtn} onPress={() => handleStartWalk(item)}>
+          <MaterialCommunityIcons name="play" size={24} color="#10B981" />
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => handleDeleteContact(item)}
-        >
-          <MaterialCommunityIcons name="trash-can-outline" size={22} color="#EF4444" />
+        <TouchableOpacity style={styles.iconActionBtn} onPress={() => handleDeleteContact(item)}>
+          <MaterialCommunityIcons name="delete-outline" size={22} color="#EF4444" />
         </TouchableOpacity>
       </View>
     </View>
@@ -161,149 +131,72 @@ export default function TrustedContacts({ navigation }) {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
 
-      {/* Header */}
-      <LinearGradient
-        colors={['#3B82F6', '#2563EB']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Trusted Contacts</Text>
-          <View style={{ width: 40 }} />
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#F8FAFC" />
+        </TouchableOpacity>
+        <View style={styles.headerTitles}>
+          <Text style={styles.headerMainTitle}>Trusted Contacts</Text>
+          <Text style={styles.headerSubTitle}>{contacts.length} CONTACTS SAVED</Text>
         </View>
-        <Text style={styles.headerSubtitle}>
-          {contacts.length} {contacts.length === 1 ? 'contact' : 'contacts'}
-        </Text>
-      </LinearGradient>
-
-      {/* Content */}
-      <View style={styles.content}>
-        {contacts.length > 0 ? (
-          <FlatList
-            data={contacts}
-            renderItem={renderContact}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContainer}
-            showsVerticalScrollIndicator={false}
-          />
-        ) : (
-          <ScrollView
-            contentContainerStyle={styles.emptyScroll}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.emptyState}>
-              <MaterialCommunityIcons name="account-multiple-outline" size={80} color="#E5E7EB" />
-              <Text style={styles.emptyTitle}>No Contacts Yet</Text>
-              <Text style={styles.emptyText}>
-                Add trusted contacts who can track your location during walks
-              </Text>
-            </View>
-          </ScrollView>
-        )}
       </View>
 
-      {/* Add Button */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={handleOpenAdd}
-        activeOpacity={0.9}
-      >
-        <LinearGradient
-          colors={['#3B82F6', '#2563EB']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.fabGradient}
-        >
-          <MaterialCommunityIcons name="plus" size={28} color="#fff" />
-        </LinearGradient>
+      <FlatList
+        data={contacts}
+        renderItem={renderContact}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContainer}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <MaterialCommunityIcons name="account-multiple-outline" size={80} color="#1E293B" />
+            <Text style={styles.emptyText}>No contacts saved yet.</Text>
+          </View>
+        }
+      />
+
+      <TouchableOpacity style={styles.fab} onPress={handleOpenAdd}>
+        <MaterialCommunityIcons name="plus" size={32} color="#fff" />
       </TouchableOpacity>
 
-      {/* Add/Edit Contact Modal */}
-      <Modal
-        visible={showModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowModal(false)}
-      >
-        <KeyboardAvoidingView
-          style={styles.modalContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => setShowModal(false)}
-          />
+      <Modal visible={showModal} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{editingContact ? 'Edit Contact' : 'Add Contact'}</Text>
-              <TouchableOpacity onPress={() => setShowModal(false)}>
-                <MaterialCommunityIcons name="close" size={24} color="#6B7280" />
+            <Text style={styles.modalTitle}>{editingContact ? 'Edit Contact' : 'New Contact'}</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Name"
+              placeholderTextColor="#64748B"
+              value={name}
+              onChangeText={setName}
+            />
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Phone"
+              placeholderTextColor="#64748B"
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+            />
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Email"
+              placeholderTextColor="#64748B"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalBtnCancel} onPress={() => setShowModal(false)}>
+                <Text style={styles.modalBtnText}>Cancel</Text>
               </TouchableOpacity>
-            </View>
-
-            <View style={styles.modalForm}>
-              <View style={styles.inputWrapper}>
-                <MaterialCommunityIcons name="account-outline" size={20} color="#6B7280" />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Full Name *"
-                  placeholderTextColor="#9CA3AF"
-                  value={name}
-                  onChangeText={setName}
-                />
-              </View>
-
-              <View style={styles.inputWrapper}>
-                <MaterialCommunityIcons name="phone-outline" size={20} color="#6B7280" />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Phone Number *"
-                  placeholderTextColor="#9CA3AF"
-                  value={phone}
-                  onChangeText={setPhone}
-                  keyboardType="phone-pad"
-                />
-              </View>
-
-              <View style={styles.inputWrapper}>
-                <MaterialCommunityIcons name="email-outline" size={20} color="#6B7280" />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Email (Optional)"
-                  placeholderTextColor="#9CA3AF"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
-
-              <TouchableOpacity
-                style={styles.addButton}
-                onPress={handleSaveContact}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={['#3B82F6', '#2563EB']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.addButtonGradient}
-                >
-                  <MaterialCommunityIcons name={editingContact ? "content-save" : "check"} size={20} color="#fff" />
-                  <Text style={styles.addButtonText}>{editingContact ? 'Update Contact' : 'Add Contact'}</Text>
-                </LinearGradient>
+              <TouchableOpacity style={styles.modalBtnSave} onPress={handleSaveContact}>
+                <Text style={styles.modalBtnText}>Save</Text>
               </TouchableOpacity>
             </View>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
     </View>
   );
@@ -312,213 +205,173 @@ export default function TrustedContacts({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#010A1A',
   },
   header: {
-    paddingTop: 60,
-    paddingBottom: 24,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-  },
-  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
-  backButton: {
+  backBtn: {
     padding: 8,
+    marginRight: 12,
   },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#fff',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  content: {
+  headerTitles: {
     flex: 1,
   },
+  headerMainTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#F8FAFC',
+  },
+  headerSubTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+    marginTop: 2,
+  },
   listContainer: {
-    padding: 20,
+    paddingHorizontal: 20,
     paddingBottom: 100,
   },
   contactCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    backgroundColor: '#0B1526',
+    borderRadius: 24,
+    marginBottom: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
-  contactMain: {
+  cardMain: {
     flexDirection: 'row',
-    padding: 16,
+    padding: 20,
+    alignItems: 'center',
   },
-  contactAvatar: {
+  avatarWrapper: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#DBEAFE',
+    backgroundColor: 'rgba(37, 99, 235, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(37, 99, 235, 0.2)',
   },
-  contactAvatarText: {
+  avatarText: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: '900',
     color: '#3B82F6',
   },
-  contactInfo: {
+  contactDetails: {
     flex: 1,
-    marginLeft: 12,
-    justifyContent: 'center',
+    marginLeft: 16,
   },
   contactName: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#111827',
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#F8FAFC',
     marginBottom: 6,
   },
-  contactDetail: {
+  detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
     marginTop: 2,
-    gap: 6,
   },
-  contactDetailText: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  contactActions: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    justifyContent: 'flex-end',
-    gap: 16,
-  },
-  actionButton: {
-    padding: 8,
-  },
-  emptyScroll: {
-    flexGrow: 1,
-    justifyContent: 'center',
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 40,
-    paddingVertical: 60,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyText: {
+  detailText: {
     fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 20,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  cardActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    gap: 24,
+  },
+  iconActionBtn: {
+    padding: 4,
   },
   fab: {
     position: 'absolute',
-    bottom: 24,
-    right: 24,
-    borderRadius: 28,
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  fabGradient: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    bottom: 30,
+    right: 30,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#2563EB',
     alignItems: 'center',
     justifyContent: 'center',
+    elevation: 8,
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
   },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'flex-end',
+  emptyState: {
+    alignItems: 'center',
+    marginTop: 100,
+  },
+  emptyText: {
+    color: '#64748B',
+    marginTop: 16,
+    fontSize: 16,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    padding: 24,
   },
   modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    backgroundColor: '#0B1526',
+    borderRadius: 32,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#F8FAFC',
+    marginBottom: 24,
   },
-  modalForm: {
-    padding: 20,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    marginBottom: 14,
-    height: 56,
+  modalInput: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 16,
+    padding: 16,
+    color: '#F8FAFC',
+    fontSize: 16,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: '#111827',
-    marginLeft: 12,
-  },
-  addButton: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginTop: 8,
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  addButtonGradient: {
+  modalActions: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    gap: 8,
+    gap: 12,
+    marginTop: 8,
   },
-  addButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
+  modalBtnCancel: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  modalBtnSave: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    backgroundColor: '#2563EB',
+  },
+  modalBtnText: {
     color: '#fff',
+    fontSize: 16,
+    fontWeight: '800',
   },
 });
