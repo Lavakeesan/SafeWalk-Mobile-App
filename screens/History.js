@@ -121,7 +121,9 @@ export default function History({ navigation }) {
 
             <View style={styles.mainContent}>
                 <LinearGradient
-                    colors={['#8B5CF6', '#7C3AED']}
+                    colors={['#1E3A8A', '#0D9488']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
                     style={styles.statsCard}
                 >
                     <View style={styles.statGroup}>

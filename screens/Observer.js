@@ -22,7 +22,7 @@ import MapView, { Marker, Polyline, UrlTile } from '../components/CustomMapView'
 const { width, height } = Dimensions.get('window');
 
 const UPDATE_MS = 4000;
-const NO_MOVE_WINDOW_MS = 30000; // 30 seconds (30,000ms) of no movement triggers popup
+const SAFETY_CHECK_INTERVAL_MS = 30000; // Mandatory safety check every 30 seconds
 const NO_MOVE_DISTANCE_M = 10;
 const CONN_LOST_MS = 15000;
 const MIN_DISTANCE_THRESHOLD = 5; // Filter out GPS jitter/drift less than 5m
@@ -79,7 +79,6 @@ export default function Observer({ navigation, route }) {
       const distFromStart = haversine(lastMovePosRef.current, newLoc);
       if (distFromStart > NO_MOVE_DISTANCE_M) {
         lastMovePosRef.current = { lat: newLoc.lat, lng: newLoc.lng };
-        lastMoveTimeRef.current = Date.now(); // Reset stay timer
       }
     }
 
@@ -241,6 +240,7 @@ View: https://www.google.com/maps?q=${current.lat},${current.lng}`;
 
   useEffect(() => {
     if (session && !observingStarted) {
+      lastMoveTimeRef.current = Date.now(); // Initialize safety timer when walk starts
       setObservingStarted(true);
     }
   }, [session, observingStarted]);
@@ -293,9 +293,9 @@ View: https://www.google.com/maps?q=${current.lat},${current.lng}`;
       if (showSafetyModal) return;
 
       const now = Date.now();
-      const stayDuration = now - lastMoveTimeRef.current;
+      const timeSinceLastCheck = now - lastMoveTimeRef.current;
 
-      if (stayDuration > NO_MOVE_WINDOW_MS) {
+      if (timeSinceLastCheck > SAFETY_CHECK_INTERVAL_MS) {
         triggerSafetyCheck();
       }
     }, 2000);
@@ -653,6 +653,46 @@ View: https://www.google.com/maps?q=${current.lat},${current.lng}`;
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Safety Check Modal */}
+      <Modal
+        visible={showSafetyModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => handleSafetyResponse(true)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.safetyModalContent}>
+            <View style={styles.safetyIconContainer}>
+              <MaterialCommunityIcons name="shield-alert" size={40} color="#EF4444" />
+            </View>
+            <Text style={styles.safetyTitle}>Safety Check</Text>
+            <Text style={styles.safetyMessage}>
+              Routine safety check. Please confirm you are safe to continue your journey.
+            </Text>
+            
+            <Text style={styles.safetyTimer}>
+              Automatic SOS in <Text style={styles.timerCount}>{safetyCountdown}</Text> seconds
+            </Text>
+
+            <View style={styles.safetyActions}>
+              <TouchableOpacity 
+                style={[styles.safetyButton, styles.safeButton]}
+                onPress={() => handleSafetyResponse(true)}
+              >
+                <Text style={styles.safeButtonText}>I AM SAFE</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.safetyButton, styles.issueButton]}
+                onPress={() => handleSafetyResponse(false)}
+              >
+                <Text style={styles.issueButtonText}>I NEED HELP</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

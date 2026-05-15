@@ -20,7 +20,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
-import { PieChart, LineChart } from 'react-native-chart-kit';
+import { LineChart } from 'react-native-chart-kit';
 
 const { width } = Dimensions.get('window');
 
@@ -32,8 +32,8 @@ export default function AdminOverview({ navigation }) {
         newSignups: 0,
     });
     const [registrationData, setRegistrationData] = useState({
-        labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-        datasets: [{ data: [0, 0, 0, 0, 0, 0, 0] }]
+        labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+        datasets: [{ data: [0, 0, 0, 0, 0, 0] }]
     });
     const [recentActivity, setRecentActivity] = useState([]);
     const [allUsers, setAllUsers] = useState([]);
@@ -96,17 +96,18 @@ export default function AdminOverview({ navigation }) {
             const sevenDaysAgo = new Date();
             sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-            // Registration Graph Logic
-            const dayCounts = {};
-            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            const last7Days = [];
-            for (let i = 6; i >= 0; i--) {
+            // Registration Graph Logic - Monthly (Last 6 Months)
+            const monthCounts = {};
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const last6Months = [];
+            
+            for (let i = 5; i >= 0; i--) {
                 const d = new Date();
-                d.setDate(d.getDate() - i);
-                const dayLabel = days[d.getDay()];
-                const dateString = d.toISOString().split('T')[0];
-                last7Days.push({ label: dayLabel, date: dateString });
-                dayCounts[dateString] = 0;
+                d.setMonth(d.getMonth() - i);
+                const monthName = months[d.getMonth()];
+                const yearMonthKey = `${d.getFullYear()}-${d.getMonth()}`;
+                last6Months.push({ label: monthName, key: yearMonthKey });
+                monthCounts[yearMonthKey] = 0;
             }
 
             usersSnapshot.forEach((doc) => {
@@ -127,13 +128,16 @@ export default function AdminOverview({ navigation }) {
                             ? userData.createdAt.toDate()
                             : new Date(userData.createdAt);
 
-                        if (createdDate > sevenDaysAgo) {
+                        // Stats for "New Signups" in last 30 days
+                        const thirtyDaysAgo = new Date();
+                        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                        if (createdDate > thirtyDaysAgo) {
                             newSignups++;
                         }
 
-                        const dateString = createdDate.toISOString().split('T')[0];
-                        if (dayCounts.hasOwnProperty(dateString)) {
-                            dayCounts[dateString]++;
+                        const yearMonthKey = `${createdDate.getFullYear()}-${createdDate.getMonth()}`;
+                        if (monthCounts.hasOwnProperty(yearMonthKey)) {
+                            monthCounts[yearMonthKey]++;
                         }
                     } catch (error) {
                         console.log('Error parsing createdAt for user:', doc.id);
@@ -142,9 +146,9 @@ export default function AdminOverview({ navigation }) {
             });
 
             setRegistrationData({
-                labels: last7Days.map(d => d.label),
+                labels: last6Months.map(m => m.label),
                 datasets: [{
-                    data: last7Days.map(d => dayCounts[d.date])
+                    data: last6Months.map(m => monthCounts[m.key])
                 }]
             });
 
@@ -476,52 +480,50 @@ export default function AdminOverview({ navigation }) {
                     </View>
                 ) : (
                     <>
-                        {/* Dashboard Insights - Status Chart Only */}
+                        {/* Registration Analysis Chart */}
                         <View style={styles.chartSection}>
                             <View style={styles.chartCard}>
                                 <View style={styles.chartHeader}>
-                                    <MaterialCommunityIcons name="chart-pie" size={20} color="#818CF8" />
-                                    <Text style={styles.chartTitle}>Member Status Overview</Text>
+                                    <MaterialCommunityIcons name="chart-line" size={20} color="#818CF8" />
+                                    <Text style={styles.chartTitle}>User Registration Growth</Text>
                                 </View>
                                 <View style={styles.chartContainer}>
-                                        <PieChart
-                                            data={[
-                                                {
-                                                    name: 'Active',
-                                                    population: stats.activeNow,
-                                                    color: '#3B82F6',
-                                                    legendFontColor: '#F8FAFC',
-                                                    legendFontSize: 10,
-                                                },
-                                                {
-                                                    name: 'Idle',
-                                                    population: stats.totalUsers - stats.activeNow,
-                                                    color: '#F43F5E',
-                                                    legendFontColor: '#F8FAFC',
-                                                    legendFontSize: 10,
-                                                },
-                                            ]}
-                                            width={(width * 0.75) - 32}
-                                            height={120}
-                                            chartConfig={{
-                                            color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+                                    <LineChart
+                                        data={registrationData}
+                                        width={width - 48}
+                                        height={200}
+                                        chartConfig={{
+                                            backgroundColor: 'transparent',
+                                            backgroundGradientFrom: '#1e293b',
+                                            backgroundGradientTo: '#1e293b',
+                                            decimalPlaces: 0,
+                                            color: (opacity = 1) => `rgba(129, 140, 248, ${opacity})`,
+                                            labelColor: (opacity = 1) => `rgba(148, 163, 184, ${opacity})`,
+                                            style: {
+                                                borderRadius: 0
+                                            },
+                                            propsForDots: {
+                                                r: "4",
+                                                strokeWidth: "2",
+                                                stroke: "#818CF8"
+                                            },
+                                            fillShadowGradient: '#818CF8',
+                                            fillShadowGradientOpacity: 0.1,
                                         }}
-                                        accessor={"population"}
-                                        backgroundColor={"transparent"}
-                                        paddingLeft={"15"}
-                                        center={[10, 0]}
-                                        absolute
+                                        bezier
+                                        style={{
+                                            marginVertical: 8,
+                                            marginLeft: -16,
+                                            paddingRight: 0,
+                                        }}
+                                        withInnerLines={false}
+                                        withOuterLines={false}
+                                        withHorizontalLabels={true}
+                                        withVerticalLabels={true}
                                     />
                                 </View>
-                                <View style={styles.miniChartLegend}>
-                                    <View style={styles.miniLegendItem}>
-                                        <View style={[styles.miniDot, { backgroundColor: '#3B82F6' }]} />
-                                        <Text style={styles.miniLegendText}>Active ({stats.activeNow})</Text>
-                                    </View>
-                                    <View style={styles.miniLegendItem}>
-                                        <View style={[styles.miniDot, { backgroundColor: '#F43F5E' }]} />
-                                        <Text style={styles.miniLegendText}>Idle ({stats.totalUsers - stats.activeNow})</Text>
-                                    </View>
+                                <View style={styles.miniChartFooter}>
+                                    <Text style={styles.miniFooterText}>NEW SIGNUPS TREND OVER THE LAST 6 MONTHS</Text>
                                 </View>
                             </View>
                         </View>
@@ -544,7 +546,10 @@ export default function AdminOverview({ navigation }) {
                         {/* Recent Activity */}
                         <View style={styles.activitySection}>
                             <View style={styles.activityHeader}>
-                                <Text style={styles.sectionTitle}>Recent Activity</Text>
+                                <View style={styles.activityTitleGroup}>
+                                    <MaterialCommunityIcons name="clock-outline" size={22} color="#818CF8" />
+                                    <Text style={styles.sectionTitle}>Recent Activity</Text>
+                                </View>
                                 <TouchableOpacity onPress={() => navigation.navigate('UserManagement')}>
                                     <Text style={styles.viewAllText}>View all</Text>
                                 </TouchableOpacity>
@@ -622,21 +627,21 @@ export default function AdminOverview({ navigation }) {
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.premiumAlertModal}>
+                        <TouchableOpacity
+                            style={styles.modalBodyClose}
+                            onPress={() => {
+                                setShowAlertModal(false);
+                                setShowUserDropdown(false);
+                            }}
+                        >
+                            <MaterialCommunityIcons name="close" size={22} color="#94A3B8" />
+                        </TouchableOpacity>
                         <View style={styles.modalSimpleHeader}>
                             <View style={styles.modalHeaderTopRow}>
                                 <View style={styles.modalHeaderTitleGroup}>
                                     <Text style={styles.modalSimpleTitleMain}>Safety Dispatch</Text>
                                     <Text style={styles.modalSimpleTitleSub}>Push urgent notifications to users</Text>
                                 </View>
-                                <TouchableOpacity
-                                    style={styles.modalSimpleCloseCircle}
-                                    onPress={() => {
-                                        setShowAlertModal(false);
-                                        setShowUserDropdown(false);
-                                    }}
-                                >
-                                    <MaterialCommunityIcons name="close" size={22} color="#94A3B8" />
-                                </TouchableOpacity>
                             </View>
 
                             <View style={styles.alertTypeIndicator}>
@@ -753,18 +758,18 @@ export default function AdminOverview({ navigation }) {
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.premiumContactsModal}>
+                        <TouchableOpacity
+                            style={styles.modalBodyClose}
+                            onPress={() => setShowContactsModal(false)}
+                        >
+                            <MaterialCommunityIcons name="close" size={22} color="#94A3B8" />
+                        </TouchableOpacity>
                         <View style={styles.modalSimpleHeader}>
                             <View style={styles.modalHeaderTopRow}>
                                 <View style={styles.modalHeaderTitleGroup}>
                                     <Text style={styles.modalSimpleTitleMain}>Trusted Networks</Text>
                                     <Text style={styles.modalSimpleTitleSub}>Monitoring user connections</Text>
                                 </View>
-                                <TouchableOpacity
-                                    style={styles.modalSimpleCloseCircle}
-                                    onPress={() => setShowContactsModal(false)}
-                                >
-                                    <MaterialCommunityIcons name="close" size={22} color="#94A3B8" />
-                                </TouchableOpacity>
                             </View>
 
                             <View style={styles.modalSimpleSearchWrapper}>
@@ -882,18 +887,18 @@ export default function AdminOverview({ navigation }) {
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.premiumNotificationModal}>
+                        <TouchableOpacity
+                            style={styles.modalBodyClose}
+                            onPress={() => setShowNewUsersModal(false)}
+                        >
+                            <MaterialCommunityIcons name="close" size={22} color="#94A3B8" />
+                        </TouchableOpacity>
                         <View style={styles.modalSimpleHeader}>
                             <View style={styles.modalHeaderTopRow}>
                                 <View style={styles.modalHeaderTitleGroup}>
                                     <Text style={styles.modalSimpleTitleMain}>System Logs</Text>
                                     <Text style={styles.modalSimpleTitleSub}>Recent user registrations (24h)</Text>
                                 </View>
-                                <TouchableOpacity
-                                    style={styles.modalSimpleCloseCircle}
-                                    onPress={() => setShowNewUsersModal(false)}
-                                >
-                                    <MaterialCommunityIcons name="close" size={20} color="#94A3B8" />
-                                </TouchableOpacity>
                             </View>
                         </View>
 
@@ -1231,7 +1236,7 @@ const styles = StyleSheet.create({
         padding: 16,
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.05)',
-        width: width * 0.75,
+        width: width - 48,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.2,
@@ -1251,9 +1256,8 @@ const styles = StyleSheet.create({
         letterSpacing: 0.5,
     },
     chartContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
         marginVertical: 10,
+        overflow: 'hidden',
     },
     chartFooter: {
         flexDirection: 'row',
@@ -1372,6 +1376,11 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '800',
         color: '#F8FAFC',
+        marginLeft: 8,
+    },
+    activityTitleGroup: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     viewAllText: {
         fontSize: 14,

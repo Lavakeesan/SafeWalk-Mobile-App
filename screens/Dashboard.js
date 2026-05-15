@@ -226,7 +226,7 @@ export default function Dashboard({ navigation }) {
           activeOpacity={0.8}
         >
           <LinearGradient
-            colors={['#2563EB', '#00F2FF']}
+            colors={['#1E3A8A', '#0D9488']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.mainStartGradient}
@@ -247,7 +247,7 @@ export default function Dashboard({ navigation }) {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalContacts}>
             {contacts.map((contact) => (
               <TouchableOpacity key={contact.id} style={styles.contactCircleItem}>
-                <View style={[styles.contactCircleAvatar, { borderColor: '#00F2FF' }]}>
+                <View style={[styles.contactCircleAvatar, { borderColor: '#0D9488' }]}>
                   <Text style={styles.contactInitialText}>{contact.name?.charAt(0)}</Text>
                 </View>
                 <Text style={styles.contactCircleName}>{contact.name.split(' ')[0]}</Text>
@@ -267,10 +267,18 @@ export default function Dashboard({ navigation }) {
 
         {/* Recent Activity Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
+          <View style={styles.sectionHeader}>
+            <View style={styles.titleWithIcon}>
+              <MaterialCommunityIcons name="clock-outline" size={22} color="#818CF8" />
+              <Text style={styles.sectionTitle}>Recent Activity</Text>
+            </View>
+            <TouchableOpacity onPress={() => navigation.navigate('History')}>
+              <Text style={styles.seeAllText}>View All</Text>
+            </TouchableOpacity>
+          </View>
           <View style={styles.activityList}>
             {history.length > 0 ? (
-              history.slice(0, 3).map((item) => (
+              history.slice(0, 10).map((item) => (
                 <TouchableOpacity key={item.id} style={styles.activityCard}>
                   <View style={styles.activityIconBox}>
                     <MaterialCommunityIcons name="history" size={20} color="#818CF8" />
@@ -316,9 +324,9 @@ export default function Dashboard({ navigation }) {
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItemActive}>
           <View style={styles.navActiveCircle}>
-            <MaterialCommunityIcons name="walk" size={28} color="#00F2FF" />
+            <MaterialCommunityIcons name="walk" size={28} color="#0D9488" />
           </View>
-          <Text style={[styles.navText, { color: '#00F2FF' }]}>Start Walk</Text>
+          <Text style={[styles.navText, { color: '#0D9488' }]}>Start Walk</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem}>
           <MaterialCommunityIcons name="cog-outline" size={24} color="#94A3B8" />
@@ -407,7 +415,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#00F2FF',
+    backgroundColor: '#0D9488',
     borderWidth: 2,
     borderColor: '#010A1A',
   },
@@ -428,13 +436,13 @@ const styles = StyleSheet.create({
     bottom: -2,
     borderRadius: 24,
     borderWidth: 1.5,
-    borderColor: '#00F2FF',
+    borderColor: '#0D9488',
     opacity: 0.5,
   },
   avatarInitial: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#00F2FF',
+    color: '#0D9488',
   },
   content: {
     flex: 1,
@@ -538,11 +546,16 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '800',
     color: '#F8FAFC',
+    marginLeft: 8,
+  },
+  titleWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   seeAllText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#00F2FF',
+    color: '#0D9488',
   },
   horizontalContacts: {
     paddingLeft: 24,
@@ -687,9 +700,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#00F2FF',
+    borderColor: '#0D9488',
     marginBottom: 4,
-    shadowColor: '#00F2FF',
+    shadowColor: '#0D9488',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
     shadowRadius: 10,
@@ -763,7 +776,7 @@ const styles = StyleSheet.create({
   modalContactAvatarText: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#00F2FF',
+    color: '#0D9488',
   },
   modalContactInfo: {
     flex: 1,
